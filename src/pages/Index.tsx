@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navigation from "@/components/Navigation";
+import { useNavigate } from "react-router-dom";
 import { FeaturesSection } from "@/components/features/FeaturesSection";
 import { PricingSection } from "@/components/pricing/PricingSection";
 import LogoCarousel from "@/components/LogoCarousel";
@@ -10,6 +11,8 @@ import Footer from "@/components/Footer";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 
 const Index = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-black text-foreground">
       <Navigation />
@@ -65,7 +68,7 @@ const Index = () => {
             transition={{ delay: 0.5 }}
             className="flex flex-col sm:flex-row gap-4 items-start"
           >
-            <Button size="lg" className="button-gradient">
+            <Button size="lg" className="button-gradient" onClick={() => navigate('/auth')}>
               Start Trading Now
             </Button>
             <Button size="lg" variant="link" className="text-white">
@@ -83,7 +86,7 @@ const Index = () => {
           <div className="glass rounded-xl overflow-hidden">
             <img
               src="/lovable-uploads/c32c6788-5e4a-4fee-afee-604b03113c7f.png"
-              alt="CryptoTrade Dashboard"
+              alt="Nexbit Dashboard"
               className="w-full h-auto"
             />
           </div>
@@ -130,7 +133,7 @@ const Index = () => {
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
             Join thousands of traders who have already discovered the power of our platform.
           </p>
-          <Button size="lg" className="button-gradient">
+          <Button size="lg" className="button-gradient" onClick={() => navigate('/auth')}>
             Create Account
             <ArrowRight className="ml-2 w-4 h-4" />
           </Button>
