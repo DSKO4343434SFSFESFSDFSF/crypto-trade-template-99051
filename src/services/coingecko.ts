@@ -2,6 +2,63 @@ import axios from 'axios';
 
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
 
+// Cache to reduce API calls
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+// Rate limiting
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 1500; // 1.5 seconds between requests
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getCached = (key: string) => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCache = (key: string, data: any) => {
+  cache.set(key, { data, timestamp: Date.now() });
+};
+
+// Retry with exponential backoff for rate limits
+const fetchWithRetry = async (url: string, params: any, retries = 2): Promise<any> => {
+  // Check cache first
+  const cacheKey = `${url}-${JSON.stringify(params)}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Rate limiting - ensure minimum interval between requests
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await sleep(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+  }
+  lastRequestTime = Date.now();
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await axios.get(url, { params });
+      setCache(cacheKey, response.data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 429 && i < retries - 1) {
+        // Rate limited - wait before retry with exponential backoff
+        const waitTime = Math.pow(2, i) * 2000; // 2s, 4s, 8s...
+        console.log(`Rate limited, waiting ${waitTime}ms before retry...`);
+        await sleep(waitTime);
+      } else {
+        throw error;
+      }
+    }
+  }
+};
+
 export interface CoinData {
   id: string;
   symbol: string;
@@ -33,18 +90,16 @@ export interface ChartData {
 
 export const fetchTopCoins = async (limit: number = 100): Promise<CoinData[]> => {
   try {
-    const response = await axios.get(`${COINGECKO_API}/coins/markets`, {
-      params: {
-        vs_currency: 'usd',
-        order: 'market_cap_desc',
-        per_page: limit,
-        page: 1,
-        sparkline: false,
-        price_change_percentage: '1h,24h,7d'
-      }
+    const data = await fetchWithRetry(`${COINGECKO_API}/coins/markets`, {
+      vs_currency: 'usd',
+      order: 'market_cap_desc',
+      per_page: limit,
+      page: 1,
+      sparkline: false,
+      price_change_percentage: '1h,24h,7d'
     });
     
-    return response.data.map((coin: any) => ({
+    return data.map((coin: any) => ({
       id: coin.id,
       symbol: coin.symbol,
       name: coin.name,
@@ -59,8 +114,11 @@ export const fetchTopCoins = async (limit: number = 100): Promise<CoinData[]> =>
       high_24h: coin.high_24h,
       low_24h: coin.low_24h,
     }));
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching coins:', error);
+    if (error.response?.status === 429) {
+      throw new Error('Rate limit exceeded. Please wait a moment before refreshing.');
+    }
     return [];
   }
 };
@@ -69,15 +127,13 @@ export const fetchTopCoins = async (limit: number = 100): Promise<CoinData[]> =>
 export const fetchCoinChart = async (coinId: string, days: number = 1): Promise<ChartData> => {
   try {
     // Prefer the OHLC endpoint for true candlestick data
-    const ohlcRes = await axios.get(`${COINGECKO_API}/coins/${coinId}/ohlc`, {
-      params: {
-        vs_currency: 'usd',
-        days
-      }
+    const ohlcData = await fetchWithRetry(`${COINGECKO_API}/coins/${coinId}/ohlc`, {
+      vs_currency: 'usd',
+      days
     });
 
-    if (Array.isArray(ohlcRes.data) && ohlcRes.data.length > 0) {
-      const candlesticks = ohlcRes.data.map((row: [number, number, number, number, number]) => ({
+    if (Array.isArray(ohlcData) && ohlcData.length > 0) {
+      const candlesticks = ohlcData.map((row: [number, number, number, number, number]) => ({
         time: row[0],
         open: row[1],
         high: row[2],
@@ -90,15 +146,13 @@ export const fetchCoinChart = async (coinId: string, days: number = 1): Promise<
     }
 
     // Fallback: market_chart (close prices)
-    const response = await axios.get(`${COINGECKO_API}/coins/${coinId}/market_chart`, {
-      params: {
-        vs_currency: 'usd',
-        days,
-        interval: days === 1 ? 'hourly' : 'daily'
-      }
+    const chartData = await fetchWithRetry(`${COINGECKO_API}/coins/${coinId}/market_chart`, {
+      vs_currency: 'usd',
+      days,
+      interval: days === 1 ? 'hourly' : 'daily'
     });
 
-    const prices = response.data.prices as [number, number][];
+    const prices = chartData.prices as [number, number][];
     return { prices, candlesticks: prices.map(([t, p], i, arr) => ({
       time: t,
       open: i > 0 ? arr[i - 1][1] : p,
@@ -106,18 +160,24 @@ export const fetchCoinChart = async (coinId: string, days: number = 1): Promise<
       low: p,
       close: p,
     })) };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching chart:', error);
+    if (error.response?.status === 429) {
+      throw new Error('Rate limit exceeded. Please wait before changing time ranges.');
+    }
     return { prices: [], candlesticks: [] };
   }
 };
 
 export const fetchGlobalData = async () => {
   try {
-    const response = await axios.get(`${COINGECKO_API}/global`);
-    return response.data.data;
-  } catch (error) {
+    const data = await fetchWithRetry(`${COINGECKO_API}/global`, {});
+    return data.data;
+  } catch (error: any) {
     console.error('Error fetching global data:', error);
+    if (error.response?.status === 429) {
+      throw new Error('Rate limit exceeded.');
+    }
     return null;
   }
 };

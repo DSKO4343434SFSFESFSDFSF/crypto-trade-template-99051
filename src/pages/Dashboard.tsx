@@ -78,7 +78,7 @@ const Dashboard = () => {
     };
 
     loadData();
-    const interval = setInterval(loadData, 60000); // Refresh every minute
+    const interval = setInterval(loadData, 5 * 60 * 1000); // Refresh every 5 minutes
 
     return () => clearInterval(interval);
   }, []);

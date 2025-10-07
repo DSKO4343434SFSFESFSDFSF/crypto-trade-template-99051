@@ -48,7 +48,7 @@ const Reports = () => {
     };
 
     loadCoins();
-    const interval = setInterval(loadCoins, 60000);
+    const interval = setInterval(loadCoins, 5 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(interval);
   }, []);
 

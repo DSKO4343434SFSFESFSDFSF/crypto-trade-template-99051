@@ -7,6 +7,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { fetchCoinChart, CoinData } from "@/services/coingecko";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { toast } from "sonner";
 
 interface CoinDetailModalProps {
   coin: CoinData;
@@ -63,8 +64,11 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
           }));
           setChartData(formatted);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading chart:', error);
+        if (error.message?.includes('Rate limit')) {
+          toast.error(error.message);
+        }
       } finally {
         setLoading(false);
       }
