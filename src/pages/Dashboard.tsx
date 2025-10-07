@@ -126,7 +126,7 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold text-primary">Nexbit</h1>
               <div className="flex gap-6">
                 <button className="text-sm font-medium text-foreground">Dashboard</button>
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Reports</button>
+                <button onClick={() => navigate("/reports")} className="text-sm font-medium text-muted-foreground hover:text-foreground">Reports</button>
                 <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Cryptocurrency</button>
                 <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Exchange</button>
                 <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Community</button>
