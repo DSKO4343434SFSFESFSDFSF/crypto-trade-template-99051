@@ -65,37 +65,47 @@ export const fetchTopCoins = async (limit: number = 100): Promise<CoinData[]> =>
   }
 };
 
-// Fetch real historical price data from CoinGecko
+// Fetch real OHLC historical price data from CoinGecko when available
 export const fetchCoinChart = async (coinId: string, days: number = 1): Promise<ChartData> => {
   try {
+    // Prefer the OHLC endpoint for true candlestick data
+    const ohlcRes = await axios.get(`${COINGECKO_API}/coins/${coinId}/ohlc`, {
+      params: {
+        vs_currency: 'usd',
+        days
+      }
+    });
+
+    if (Array.isArray(ohlcRes.data) && ohlcRes.data.length > 0) {
+      const candlesticks = ohlcRes.data.map((row: [number, number, number, number, number]) => ({
+        time: row[0],
+        open: row[1],
+        high: row[2],
+        low: row[3],
+        close: row[4],
+      }));
+
+      const prices: [number, number][] = candlesticks.map((c) => [c.time, c.close]);
+      return { prices, candlesticks };
+    }
+
+    // Fallback: market_chart (close prices)
     const response = await axios.get(`${COINGECKO_API}/coins/${coinId}/market_chart`, {
       params: {
         vs_currency: 'usd',
-        days: days,
+        days,
         interval: days === 1 ? 'hourly' : 'daily'
       }
     });
-    
-    const prices = response.data.prices;
-    
-    // Convert to candlestick data for better visualization
-    const candlesticks: CandlestickData[] = [];
-    const interval = days === 1 ? 4 : days === 7 ? 24 : days === 30 ? 96 : 288; // Group prices into candles
-    
-    for (let i = 0; i < prices.length; i += interval) {
-      const candle = prices.slice(i, i + interval);
-      if (candle.length > 0) {
-        const open = candle[0][1];
-        const close = candle[candle.length - 1][1];
-        const high = Math.max(...candle.map((p: any) => p[1]));
-        const low = Math.min(...candle.map((p: any) => p[1]));
-        const time = candle[0][0];
-        
-        candlesticks.push({ time, open, high, low, close });
-      }
-    }
-    
-    return { prices, candlesticks };
+
+    const prices = response.data.prices as [number, number][];
+    return { prices, candlesticks: prices.map(([t, p], i, arr) => ({
+      time: t,
+      open: i > 0 ? arr[i - 1][1] : p,
+      high: p,
+      low: p,
+      close: p,
+    })) };
   } catch (error) {
     console.error('Error fetching chart:', error);
     return { prices: [], candlesticks: [] };

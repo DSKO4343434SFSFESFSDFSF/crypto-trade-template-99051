@@ -188,32 +188,7 @@ const ChartSection = ({ loading, chartData }: { loading: boolean; chartData: any
             domain={['auto', 'auto']}
             tickFormatter={(value) => `$${value.toLocaleString()}`}
           />
-          <ChartTooltip 
-            content={({ active, payload }) => {
-              if (active && payload && payload.length) {
-                const data = payload[0].payload;
-                if (hasCandlestickData) {
-                  return (
-                    <div className="rounded-lg border bg-background p-3 shadow-md">
-                      <p className="text-xs text-muted-foreground mb-2">{data.time}</p>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <span className="text-muted-foreground">Open:</span>
-                        <span className="font-medium">${data.open?.toLocaleString()}</span>
-                        <span className="text-muted-foreground">High:</span>
-                        <span className="font-medium text-primary">${data.high?.toLocaleString()}</span>
-                        <span className="text-muted-foreground">Low:</span>
-                        <span className="font-medium text-destructive">${data.low?.toLocaleString()}</span>
-                        <span className="text-muted-foreground">Close:</span>
-                        <span className="font-medium">${data.close?.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  );
-                }
-                return <ChartTooltipContent />;
-              }
-              return null;
-            }}
-          />
+          <ChartTooltip content={<ChartTooltipContent />} />
           {hasCandlestickData ? (
             <>
               <Area
