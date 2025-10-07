@@ -1,20 +1,55 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Command, ArrowLeft } from "lucide-react";
+import { Command, ArrowLeft, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [country, setCountry] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState<Date>();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const countries = [
+    { code: "us", name: "United States" },
+    { code: "gb", name: "United Kingdom" },
+    { code: "ca", name: "Canada" },
+    { code: "au", name: "Australia" },
+    { code: "de", name: "Germany" },
+    { code: "fr", name: "France" },
+    { code: "es", name: "Spain" },
+    { code: "it", name: "Italy" },
+    { code: "nl", name: "Netherlands" },
+    { code: "se", name: "Sweden" },
+    { code: "no", name: "Norway" },
+    { code: "dk", name: "Denmark" },
+    { code: "fi", name: "Finland" },
+    { code: "pl", name: "Poland" },
+    { code: "jp", name: "Japan" },
+    { code: "cn", name: "China" },
+    { code: "in", name: "India" },
+    { code: "br", name: "Brazil" },
+    { code: "mx", name: "Mexico" },
+    { code: "ar", name: "Argentina" },
+  ];
 
   useEffect(() => {
     // Check if user is already logged in
@@ -57,6 +92,15 @@ const Auth = () => {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              country: country,
+              address: address,
+              city: city,
+              postal_code: postalCode,
+              date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+            },
           },
         });
 
@@ -117,7 +161,142 @@ const Auth = () => {
           </p>
 
           {/* Form */}
-          <form onSubmit={handleAuth} className="space-y-6">
+          <form onSubmit={handleAuth} className="space-y-4">
+            {!isLogin && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="John"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required={!isLogin}
+                      className="bg-white/5 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required={!isLogin}
+                      className="bg-white/5 border-white/10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Select value={country} onValueChange={setCountry} required={!isLogin}>
+                    <SelectTrigger className="bg-white/5 border-white/10">
+                      <SelectValue placeholder="Select your country">
+                        {country && (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={`https://flagcdn.com/w20/${country}.png`}
+                              alt=""
+                              className="w-5 h-auto"
+                            />
+                            <span>{countries.find(c => c.code === country)?.name}</span>
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-white/10 z-50">
+                      {countries.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={`https://flagcdn.com/w20/${c.code}.png`}
+                              alt=""
+                              className="w-5 h-auto"
+                            />
+                            <span>{c.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    type="text"
+                    placeholder="123 Main St"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    required={!isLogin}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      type="text"
+                      placeholder="New York"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      required={!isLogin}
+                      className="bg-white/5 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode">Postal Code</Label>
+                    <Input
+                      id="postalCode"
+                      type="text"
+                      placeholder="10001"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      required={!isLogin}
+                      className="bg-white/5 border-white/10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Date of Birth</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal bg-white/5 border-white/10",
+                          !dateOfBirth && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateOfBirth ? format(dateOfBirth, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-50 bg-background border-white/10" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateOfBirth}
+                        onSelect={setDateOfBirth}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
