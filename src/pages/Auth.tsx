@@ -34,7 +34,8 @@ const Auth = () => {
   
   // Step 3: KYC
   const [kycDocType, setKycDocType] = useState("");
-  const [kycFile, setKycFile] = useState<File | null>(null);
+  const [kycFileFront, setKycFileFront] = useState<File | null>(null);
+  const [kycFileBack, setKycFileBack] = useState<File | null>(null);
   const [userId, setUserId] = useState<string>("");
   
   const [loading, setLoading] = useState(false);
@@ -42,7 +43,6 @@ const Auth = () => {
   const { toast } = useToast();
 
   const countries = [
-    { code: "us", name: "United States" },
     { code: "gb", name: "United Kingdom" },
     { code: "ca", name: "Canada" },
     { code: "au", name: "Australia" },
@@ -62,6 +62,27 @@ const Auth = () => {
     { code: "br", name: "Brazil" },
     { code: "mx", name: "Mexico" },
     { code: "ar", name: "Argentina" },
+    { code: "ch", name: "Switzerland" },
+    { code: "be", name: "Belgium" },
+    { code: "at", name: "Austria" },
+    { code: "pt", name: "Portugal" },
+    { code: "gr", name: "Greece" },
+    { code: "ie", name: "Ireland" },
+    { code: "nz", name: "New Zealand" },
+    { code: "sg", name: "Singapore" },
+    { code: "ae", name: "United Arab Emirates" },
+    { code: "sa", name: "Saudi Arabia" },
+    { code: "kr", name: "South Korea" },
+    { code: "za", name: "South Africa" },
+    { code: "eg", name: "Egypt" },
+    { code: "tr", name: "Turkey" },
+    { code: "th", name: "Thailand" },
+    { code: "my", name: "Malaysia" },
+    { code: "id", name: "Indonesia" },
+    { code: "ph", name: "Philippines" },
+    { code: "vn", name: "Vietnam" },
+    { code: "pk", name: "Pakistan" },
+    { code: "bd", name: "Bangladesh" },
   ];
 
   const calculatePasswordStrength = (pwd: string) => {
@@ -168,23 +189,42 @@ const Auth = () => {
       if (signUpError) throw signUpError;
       if (!authData.user) throw new Error("User creation failed");
 
-      // Upload KYC document
-      if (kycFile) {
-        const fileExt = kycFile.name.split(".").pop();
-        const fileName = `${authData.user.id}/${Date.now()}.${fileExt}`;
+      // Upload KYC documents (front and back)
+      let frontUrl = null;
+      let backUrl = null;
+
+      if (kycFileFront) {
+        const fileExt = kycFileFront.name.split(".").pop();
+        const fileName = `${authData.user.id}/front_${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from("kyc-documents")
-          .upload(fileName, kycFile);
+          .upload(fileName, kycFileFront);
 
         if (uploadError) throw uploadError;
+        frontUrl = fileName;
+      }
 
-        // Update profile with KYC info
+      if (kycFileBack) {
+        const fileExt = kycFileBack.name.split(".").pop();
+        const fileName = `${authData.user.id}/back_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("kyc-documents")
+          .upload(fileName, kycFileBack);
+
+        if (uploadError) throw uploadError;
+        backUrl = fileName;
+      }
+
+      // Update profile with KYC info
+      if (frontUrl || backUrl) {
         const { error: updateError } = await supabase
           .from("profiles")
           .update({
             kyc_document_type: kycDocType,
-            kyc_document_url: fileName,
+            kyc_document_front_url: frontUrl,
+            kyc_document_back_url: backUrl,
           })
           .eq("id", authData.user.id);
 
@@ -501,23 +541,55 @@ const Auth = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="kycFile">Upload Document</Label>
-                  <div className="relative">
-                    <Input
-                      id="kycFile"
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setKycFile(e.target.files?.[0] || null)}
-                      required
-                      className="bg-white/5 border-white/10"
-                    />
-                    {kycFile && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-green-400">
-                        <CheckCircle2 className="w-4 h-4" />
-                        {kycFile.name}
+                <div className="space-y-4">
+                  <Label>Upload Document (Front & Back)</Label>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="relative border-2 border-dashed border-white/20 rounded-lg p-4 hover:border-primary/50 transition-colors">
+                        <Input
+                          id="kycFileFront"
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => setKycFileFront(e.target.files?.[0] || null)}
+                          required
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="flex flex-col items-center justify-center text-center space-y-2">
+                          <Upload className="w-8 h-8 text-gray-400" />
+                          <div className="text-sm text-gray-400">Front Side</div>
+                          {kycFileFront && (
+                            <div className="flex items-center gap-1 text-xs text-green-400">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Uploaded
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="relative border-2 border-dashed border-white/20 rounded-lg p-4 hover:border-primary/50 transition-colors">
+                        <Input
+                          id="kycFileBack"
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => setKycFileBack(e.target.files?.[0] || null)}
+                          required
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="flex flex-col items-center justify-center text-center space-y-2">
+                          <Upload className="w-8 h-8 text-gray-400" />
+                          <div className="text-sm text-gray-400">Back Side</div>
+                          {kycFileBack && (
+                            <div className="flex items-center gap-1 text-xs text-green-400">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Uploaded
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

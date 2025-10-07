@@ -24,8 +24,9 @@ export type Database = {
           email: string | null
           first_name: string | null
           id: string
+          kyc_document_back_url: string | null
+          kyc_document_front_url: string | null
           kyc_document_type: string | null
-          kyc_document_url: string | null
           kyc_verified: boolean | null
           last_name: string | null
           postal_code: string | null
@@ -40,8 +41,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id: string
+          kyc_document_back_url?: string | null
+          kyc_document_front_url?: string | null
           kyc_document_type?: string | null
-          kyc_document_url?: string | null
           kyc_verified?: boolean | null
           last_name?: string | null
           postal_code?: string | null
@@ -56,8 +58,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
+          kyc_document_back_url?: string | null
+          kyc_document_front_url?: string | null
           kyc_document_type?: string | null
-          kyc_document_url?: string | null
           kyc_verified?: boolean | null
           last_name?: string | null
           postal_code?: string | null
