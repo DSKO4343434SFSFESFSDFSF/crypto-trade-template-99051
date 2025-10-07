@@ -103,11 +103,10 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
         </DialogHeader>
 
         <Tabs defaultValue="1" onValueChange={(value) => setTimeRange(Number(value))}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="1">24H</TabsTrigger>
             <TabsTrigger value="7">7D</TabsTrigger>
             <TabsTrigger value="30">30D</TabsTrigger>
-            <TabsTrigger value="365">ALL</TabsTrigger>
           </TabsList>
 
           <TabsContent value="1" className="mt-6">
@@ -117,9 +116,6 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
             <ChartSection loading={loading} chartData={chartData} />
           </TabsContent>
           <TabsContent value="30" className="mt-6">
-            <ChartSection loading={loading} chartData={chartData} />
-          </TabsContent>
-          <TabsContent value="365" className="mt-6">
             <ChartSection loading={loading} chartData={chartData} />
           </TabsContent>
         </Tabs>
