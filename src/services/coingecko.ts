@@ -69,38 +69,43 @@ export const fetchCoinChart = async (coinId: string, days: number = 1): Promise<
     // Generate historical price data with realistic patterns
     const prices: [number, number][] = [];
     const now = Date.now();
-    const dataPoints = 100;
+    const dataPoints = days === 1 ? 48 : days === 7 ? 84 : 90; // Different densities for different ranges
     const interval = (days * 24 * 60 * 60 * 1000) / dataPoints;
     
+    // Calculate base change for the period
+    let baseChange: number;
+    if (days === 1) {
+      baseChange = change24h;
+    } else if (days === 7) {
+      baseChange = change7d;
+    } else if (days === 30) {
+      baseChange = change7d * 3.5; // Extrapolate for 30 days
+    } else {
+      baseChange = change7d * (days / 7) * 0.9; // Extrapolate for 90 days
+    }
+    
+    // Generate prices with multiple wave patterns for realism
     for (let i = dataPoints; i >= 0; i--) {
       const timestamp = now - (i * interval);
-      const percentComplete = i / dataPoints;
-      let price: number;
+      const progress = i / dataPoints;
       
-      if (days === 1) {
-        // For 24h, use linear interpolation with the 24h change
-        const priceChange = (currentPrice * change24h) / 100;
-        price = currentPrice - (priceChange * percentComplete);
-        // Add wave pattern for realism
-        const waveEffect = Math.sin((percentComplete * Math.PI * 4)) * (currentPrice * 0.005);
-        price += waveEffect;
-      } else if (days === 7) {
-        // For 7 days, use 7d change
-        const priceChange = (currentPrice * change7d) / 100;
-        price = currentPrice - (priceChange * percentComplete);
-        const waveEffect = Math.sin((percentComplete * Math.PI * 8)) * (currentPrice * 0.01);
-        price += waveEffect;
-      } else {
-        // For longer periods, extrapolate from 7d change
-        const estimatedChange = change7d * (days / 7) * 0.8; // Dampen for longer periods
-        const priceChange = (currentPrice * estimatedChange) / 100;
-        price = currentPrice - (priceChange * percentComplete);
-        const waveEffect = Math.sin((percentComplete * Math.PI * 6)) * (currentPrice * 0.015);
-        price += waveEffect;
-      }
+      // Base price calculation from the change
+      const basePriceChange = (currentPrice * baseChange) / 100;
+      let price = currentPrice - (basePriceChange * progress);
+      
+      // Add multiple wave frequencies for more realistic movement
+      const wave1 = Math.sin(progress * Math.PI * (days === 1 ? 6 : days === 7 ? 10 : 15)) * (currentPrice * 0.008);
+      const wave2 = Math.sin(progress * Math.PI * (days === 1 ? 12 : days === 7 ? 20 : 30)) * (currentPrice * 0.004);
+      const wave3 = Math.cos(progress * Math.PI * (days === 1 ? 8 : days === 7 ? 15 : 20)) * (currentPrice * 0.006);
+      
+      // Add trend variation - increases volatility for longer periods
+      const volatilityMultiplier = days === 1 ? 0.01 : days === 7 ? 0.015 : days === 30 ? 0.025 : 0.03;
+      const randomNoise = (Math.random() - 0.5) * (currentPrice * volatilityMultiplier);
+      
+      price += wave1 + wave2 + wave3 + randomNoise;
       
       // Ensure price is never negative
-      prices.push([timestamp, Math.max(price, 0.000001)]);
+      prices.push([timestamp, Math.max(price, currentPrice * 0.3)]); // Never go below 30% of current
     }
     
     return { prices };
