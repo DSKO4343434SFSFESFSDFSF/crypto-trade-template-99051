@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { fetchCoinChart, CoinData, ChartData } from "@/services/coingecko";
+import { fetchCoinChart, CoinData } from "@/services/coingecko";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
@@ -34,20 +34,35 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
       try {
         const data = await fetchCoinChart(coin.id, timeRange);
         
-        const formatted = data.prices.map((price) => ({
-          time: new Date(price[0]).toLocaleString('en-US', { 
-            month: 'short',
-            day: 'numeric',
-            ...(timeRange === 1 && { hour: 'numeric', minute: '2-digit' })
-          }),
-          price: price[1],
-        }));
-
-        // Sample data points for better visualization
-        const sampleRate = timeRange === 1 ? 4 : timeRange === 7 ? 6 : 12;
-        const sampled = formatted.filter((_, index) => index % sampleRate === 0);
-        
-        setChartData(sampled);
+        if (data.candlesticks && data.candlesticks.length > 0) {
+          // Use candlestick data with OHLC values
+          const formatted = data.candlesticks.map((candle) => ({
+            time: new Date(candle.time).toLocaleString('en-US', { 
+              month: 'short',
+              day: 'numeric',
+              ...(timeRange === 1 && { hour: 'numeric' })
+            }),
+            price: candle.close,
+            open: candle.open,
+            high: candle.high,
+            low: candle.low,
+            close: candle.close,
+            // Color for candlestick body
+            fill: candle.close >= candle.open ? 'hsl(var(--primary))' : 'hsl(var(--destructive))',
+          }));
+          setChartData(formatted);
+        } else {
+          // Fallback to line chart if no candlestick data
+          const formatted = data.prices.map((price) => ({
+            time: new Date(price[0]).toLocaleString('en-US', { 
+              month: 'short',
+              day: 'numeric',
+              ...(timeRange === 1 && { hour: 'numeric' })
+            }),
+            price: price[1],
+          }));
+          setChartData(formatted);
+        }
       } catch (error) {
         console.error('Error loading chart:', error);
       } finally {
@@ -110,11 +125,11 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
           <StatCard label="24h Volume" value={`$${(coin.total_volume / 1000000000).toFixed(2)}B`} />
           <StatCard 
             label="24h High" 
-            value={`$${(coin.current_price * (1 + Math.abs(coin.price_change_percentage_24h) / 100)).toLocaleString()}`} 
+            value={coin.high_24h ? `$${coin.high_24h.toLocaleString()}` : 'N/A'} 
           />
           <StatCard 
             label="24h Low" 
-            value={`$${(coin.current_price * (1 - Math.abs(coin.price_change_percentage_24h) / 100)).toLocaleString()}`} 
+            value={coin.low_24h ? `$${coin.low_24h.toLocaleString()}` : 'N/A'} 
           />
         </div>
 
@@ -125,7 +140,7 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
               <span className="font-medium text-foreground">Symbol:</span> {coin.symbol.toUpperCase()}
             </p>
             <p>
-              <span className="font-medium text-foreground">Market Cap Rank:</span> #{coin.rank}
+              <span className="font-medium text-foreground">Market Cap Rank:</span> #{coin.market_cap_rank}
             </p>
             <p className="mt-4">
               {coin.name} is a leading cryptocurrency with a current market cap of ${(coin.market_cap / 1000000000).toFixed(2)}B 
@@ -146,6 +161,8 @@ const ChartSection = ({ loading, chartData }: { loading: boolean; chartData: any
       </div>
     );
   }
+
+  const hasCandlestickData = chartData.length > 0 && chartData[0].open !== undefined;
 
   return (
     <Card className="glass border-border p-6">
@@ -168,16 +185,70 @@ const ChartSection = ({ loading, chartData }: { loading: boolean; chartData: any
             stroke="hsl(var(--muted-foreground))"
             fontSize={12}
             tickLine={false}
+            domain={['auto', 'auto']}
             tickFormatter={(value) => `$${value.toLocaleString()}`}
           />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <Area
-            type="monotone"
-            dataKey="price"
-            stroke="hsl(var(--primary))"
-            strokeWidth={2}
-            fill="url(#priceGradient)"
+          <ChartTooltip 
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0].payload;
+                if (hasCandlestickData) {
+                  return (
+                    <div className="rounded-lg border bg-background p-3 shadow-md">
+                      <p className="text-xs text-muted-foreground mb-2">{data.time}</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <span className="text-muted-foreground">Open:</span>
+                        <span className="font-medium">${data.open?.toLocaleString()}</span>
+                        <span className="text-muted-foreground">High:</span>
+                        <span className="font-medium text-primary">${data.high?.toLocaleString()}</span>
+                        <span className="text-muted-foreground">Low:</span>
+                        <span className="font-medium text-destructive">${data.low?.toLocaleString()}</span>
+                        <span className="text-muted-foreground">Close:</span>
+                        <span className="font-medium">${data.close?.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                }
+                return <ChartTooltipContent />;
+              }
+              return null;
+            }}
           />
+          {hasCandlestickData ? (
+            <>
+              <Area
+                type="monotone"
+                dataKey="high"
+                stroke="hsl(var(--primary))"
+                strokeWidth={1}
+                fill="transparent"
+                strokeDasharray="3 3"
+              />
+              <Area
+                type="monotone"
+                dataKey="close"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                fill="url(#priceGradient)"
+              />
+              <Area
+                type="monotone"
+                dataKey="low"
+                stroke="hsl(var(--destructive))"
+                strokeWidth={1}
+                fill="transparent"
+                strokeDasharray="3 3"
+              />
+            </>
+          ) : (
+            <Area
+              type="monotone"
+              dataKey="price"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              fill="url(#priceGradient)"
+            />
+          )}
         </AreaChart>
       </ChartContainer>
     </Card>
