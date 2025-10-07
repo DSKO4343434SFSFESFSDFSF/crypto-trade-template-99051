@@ -107,7 +107,7 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
             <TabsTrigger value="1">24H</TabsTrigger>
             <TabsTrigger value="7">7D</TabsTrigger>
             <TabsTrigger value="30">30D</TabsTrigger>
-            <TabsTrigger value="90">90D</TabsTrigger>
+            <TabsTrigger value="365">ALL</TabsTrigger>
           </TabsList>
 
           <TabsContent value="1" className="mt-6">
@@ -119,7 +119,7 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
           <TabsContent value="30" className="mt-6">
             <ChartSection loading={loading} chartData={chartData} />
           </TabsContent>
-          <TabsContent value="90" className="mt-6">
+          <TabsContent value="365" className="mt-6">
             <ChartSection loading={loading} chartData={chartData} />
           </TabsContent>
         </Tabs>
