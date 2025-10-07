@@ -110,11 +110,11 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
           <StatCard label="24h Volume" value={`$${(coin.total_volume / 1000000000).toFixed(2)}B`} />
           <StatCard 
             label="24h High" 
-            value={coin.current_price ? `$${(coin.current_price * 1.05).toLocaleString()}` : 'N/A'} 
+            value={`$${(coin.current_price * (1 + Math.abs(coin.price_change_percentage_24h) / 100)).toLocaleString()}`} 
           />
           <StatCard 
             label="24h Low" 
-            value={coin.current_price ? `$${(coin.current_price * 0.95).toLocaleString()}` : 'N/A'} 
+            value={`$${(coin.current_price * (1 - Math.abs(coin.price_change_percentage_24h) / 100)).toLocaleString()}`} 
           />
         </div>
 
@@ -125,7 +125,7 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
               <span className="font-medium text-foreground">Symbol:</span> {coin.symbol.toUpperCase()}
             </p>
             <p>
-              <span className="font-medium text-foreground">Market Cap Rank:</span> #{coin.market_cap / coin.current_price > 0 ? Math.floor(Math.random() * 100) + 1 : 'N/A'}
+              <span className="font-medium text-foreground">Market Cap Rank:</span> #{coin.rank}
             </p>
             <p className="mt-4">
               {coin.name} is a leading cryptocurrency with a current market cap of ${(coin.market_cap / 1000000000).toFixed(2)}B 
