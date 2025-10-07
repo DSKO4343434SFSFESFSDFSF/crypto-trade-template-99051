@@ -189,6 +189,15 @@ const Auth = () => {
       if (signUpError) throw signUpError;
       if (!authData.user) throw new Error("User creation failed");
 
+      // Ensure authenticated session before uploading (fixes RLS)
+      let { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError || !signInData.session) {
+          throw new Error("Please verify your email or login before uploading documents.");
+        }
+      }
+
       // Upload KYC documents (front and back)
       let frontUrl = null;
       let backUrl = null;
