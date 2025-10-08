@@ -189,16 +189,22 @@ const Auth = () => {
       if (signUpError) throw signUpError;
       if (!authData.user) throw new Error("User creation failed");
 
-      // Ensure authenticated session before uploading (fixes RLS)
-      let { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      // Get fresh authenticated session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        // Sign in to get authenticated session
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ 
+          email, 
+          password 
+        });
+        
         if (signInError || !signInData.session) {
-          throw new Error("Please verify your email or login before uploading documents.");
+          throw new Error("Authentication failed. Please verify your email and try again.");
         }
       }
 
-      // Upload KYC documents (front and back)
+      // Upload KYC documents using authenticated user's folder
       let frontUrl = null;
       let backUrl = null;
 
@@ -208,7 +214,10 @@ const Auth = () => {
         
         const { error: uploadError } = await supabase.storage
           .from("kyc-documents")
-          .upload(fileName, kycFileFront);
+          .upload(fileName, kycFileFront, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) throw uploadError;
         frontUrl = fileName;
@@ -220,7 +229,10 @@ const Auth = () => {
         
         const { error: uploadError } = await supabase.storage
           .from("kyc-documents")
-          .upload(fileName, kycFileBack);
+          .upload(fileName, kycFileBack, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) throw uploadError;
         backUrl = fileName;
