@@ -158,7 +158,7 @@ const Auth = () => {
     }
   };
 
-  const handleStep2 = async (e: React.FormEvent) => {
+  const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault();
     setStep(3);
   };
@@ -639,9 +639,92 @@ const Auth = () => {
                 <p className="text-gray-400">
                   We've sent a verification link to {email}. Please check your inbox and verify your account.
                 </p>
+                {(kycFileFront || kycFileBack) && (
+                  <div className="space-y-4 mt-6">
+                    <p className="text-sm text-gray-400">
+                      After verifying your email, click below to upload your documents:
+                    </p>
+                    <Button
+                      onClick={async () => {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (session) {
+                          // User is verified, upload files
+                          try {
+                            setLoading(true);
+                            let frontUrl = null;
+                            let backUrl = null;
+
+                            if (kycFileFront) {
+                              const fileExt = kycFileFront.name.split(".").pop();
+                              const fileName = `${session.user.id}/front_${Date.now()}.${fileExt}`;
+                              
+                              const { error: uploadError } = await supabase.storage
+                                .from("kyc-documents")
+                                .upload(fileName, kycFileFront);
+
+                              if (uploadError) throw uploadError;
+                              frontUrl = fileName;
+                            }
+
+                            if (kycFileBack) {
+                              const fileExt = kycFileBack.name.split(".").pop();
+                              const fileName = `${session.user.id}/back_${Date.now()}.${fileExt}`;
+                              
+                              const { error: uploadError } = await supabase.storage
+                                .from("kyc-documents")
+                                .upload(fileName, kycFileBack);
+
+                              if (uploadError) throw uploadError;
+                              backUrl = fileName;
+                            }
+
+                            // Update profile
+                            if (frontUrl || backUrl) {
+                              const { error: updateError } = await supabase
+                                .from("profiles")
+                                .update({
+                                  kyc_document_type: kycDocType,
+                                  kyc_document_front_url: frontUrl,
+                                  kyc_document_back_url: backUrl,
+                                })
+                                .eq("id", session.user.id);
+
+                              if (updateError) throw updateError;
+                            }
+
+                            toast({
+                              title: "Success!",
+                              description: "Documents uploaded successfully.",
+                            });
+                            navigate("/dashboard");
+                          } catch (error: any) {
+                            toast({
+                              title: "Upload failed",
+                              description: error.message,
+                              variant: "destructive",
+                            });
+                          } finally {
+                            setLoading(false);
+                          }
+                        } else {
+                          toast({
+                            title: "Please verify your email first",
+                            description: "Check your inbox and click the verification link.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      className="button-gradient w-full"
+                      disabled={loading}
+                    >
+                      {loading ? "Uploading..." : "Upload Documents"}
+                    </Button>
+                  </div>
+                )}
                 <Button
                   onClick={() => navigate("/")}
-                  className="button-gradient w-full"
+                  variant="outline"
+                  className="w-full"
                 >
                   Return to Home
                 </Button>
