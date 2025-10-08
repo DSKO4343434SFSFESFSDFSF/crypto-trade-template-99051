@@ -191,8 +191,9 @@ const Auth = () => {
 
       // Get fresh authenticated session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !sessionData.session) {
+
+      let activeSession = sessionData.session;
+      if (sessionError || !activeSession) {
         // Sign in to get authenticated session
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ 
           email, 
@@ -202,7 +203,10 @@ const Auth = () => {
         if (signInError || !signInData.session) {
           throw new Error("Authentication failed. Please verify your email and try again.");
         }
+        activeSession = signInData.session;
       }
+
+      const userId = activeSession.user.id;
 
       // Upload KYC documents using authenticated user's folder
       let frontUrl = null;
@@ -210,7 +214,7 @@ const Auth = () => {
 
       if (kycFileFront) {
         const fileExt = kycFileFront.name.split(".").pop();
-        const fileName = `${authData.user.id}/front_${Date.now()}.${fileExt}`;
+        const fileName = `${userId}/front_${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from("kyc-documents")
@@ -225,7 +229,7 @@ const Auth = () => {
 
       if (kycFileBack) {
         const fileExt = kycFileBack.name.split(".").pop();
-        const fileName = `${authData.user.id}/back_${Date.now()}.${fileExt}`;
+        const fileName = `${userId}/back_${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from("kyc-documents")
@@ -238,7 +242,7 @@ const Auth = () => {
         backUrl = fileName;
       }
 
-      // Update profile with KYC info
+      // Update profile with KYC info using the same user ID
       if (frontUrl || backUrl) {
         const { error: updateError } = await supabase
           .from("profiles")
@@ -247,7 +251,7 @@ const Auth = () => {
             kyc_document_front_url: frontUrl,
             kyc_document_back_url: backUrl,
           })
-          .eq("id", authData.user.id);
+          .eq("id", userId);
 
         if (updateError) throw updateError;
       }
