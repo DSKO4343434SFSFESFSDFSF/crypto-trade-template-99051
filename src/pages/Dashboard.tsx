@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Bell, ChevronDown, Search, Grid3x3, TrendingUp, Zap, Heart } from "lucide-react";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { PromoBanner } from "@/components/dashboard/PromoBanner";
-import { ForYouCard } from "@/components/dashboard/ForYouCard";
 import { WatchlistCard } from "@/components/dashboard/WatchlistCard";
 import { fetchTopCoins, CoinData } from "@/services/coingecko";
 import { toast } from "sonner";
@@ -18,6 +17,7 @@ const Dashboard = () => {
   const [coins, setCoins] = useState<CoinData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"buy" | "sell" | "convert">("buy");
+  const [portfolioValue, setPortfolioValue] = useState(0);
 
   useEffect(() => {
     // Check authentication and fetch user profile
@@ -60,6 +60,21 @@ const Dashboard = () => {
       try {
         const coinsData = await fetchTopCoins();
         setCoins(coinsData);
+        
+        // Fetch portfolio value if user is authenticated
+        if (user) {
+          const { data: portfolioData } = await supabase
+            .from('user_portfolio_summary')
+            .select('current_value')
+            .eq('user_id', user.id);
+          
+          if (portfolioData && portfolioData.length > 0) {
+            const totalValue = portfolioData.reduce((sum, item) => sum + (Number(item.current_value) || 0), 0);
+            setPortfolioValue(totalValue);
+          } else {
+            setPortfolioValue(0);
+          }
+        }
       } catch (error) {
         toast.error("Failed to load market data");
         console.error(error);
@@ -72,7 +87,7 @@ const Dashboard = () => {
     const interval = setInterval(loadData, 60000); // Refresh every minute
 
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -106,10 +121,10 @@ const Dashboard = () => {
     <div className="min-h-screen bg-[#0A0A0A]">
       {/* Top Navigation */}
       <nav className="border-b border-white/5 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container px-6 py-4">
+        <div className="max-w-[1800px] mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
                 <span className="text-white font-bold text-sm">N</span>
               </div>
               <h1 className="text-xl font-bold text-white">Nexbit</h1>
@@ -122,7 +137,7 @@ const Dashboard = () => {
                 <input 
                   type="text" 
                   placeholder="Search for assets, markets & more" 
-                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-20 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-20 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-white/10 rounded text-xs text-muted-foreground">
                   Ctrl K
@@ -131,14 +146,14 @@ const Dashboard = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
+              <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Transfer
               </Button>
               <Grid3x3 className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-foreground" />
               {user && <NotificationBell userId={user.id} />}
               <div className="flex items-center gap-3 ml-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
                   <span className="text-sm font-medium text-white">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
                 </div>
               </div>
@@ -148,7 +163,7 @@ const Dashboard = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="container px-6 py-8">
+      <main className="max-w-[1800px] mx-auto px-8 py-8">
         {/* Promo Banner */}
         <PromoBanner />
 
@@ -189,7 +204,7 @@ const Dashboard = () => {
             {/* Most Popular Global Markets */}
             <div className="mt-8">
               <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-                Most Popular Global Markets <Heart className="w-6 h-6 text-purple-500 fill-purple-500" />
+                Most Popular Global Markets <Heart className="w-6 h-6 text-green-500 fill-green-500" />
               </h3>
               <p className="text-sm text-gray-400">Discover all the most popular assets on Nexbit</p>
             </div>
@@ -203,7 +218,7 @@ const Dashboard = () => {
                 <button 
                   onClick={() => setActiveTab("buy")}
                   className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
-                    activeTab === "buy" ? "border-purple-500 text-white" : "border-transparent text-gray-400"
+                    activeTab === "buy" ? "border-green-500 text-white" : "border-transparent text-gray-400"
                   }`}
                 >
                   Buy
@@ -211,7 +226,7 @@ const Dashboard = () => {
                 <button 
                   onClick={() => setActiveTab("sell")}
                   className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
-                    activeTab === "sell" ? "border-purple-500 text-white" : "border-transparent text-gray-400"
+                    activeTab === "sell" ? "border-green-500 text-white" : "border-transparent text-gray-400"
                   }`}
                 >
                   Sell
@@ -219,7 +234,7 @@ const Dashboard = () => {
                 <button 
                   onClick={() => setActiveTab("convert")}
                   className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
-                    activeTab === "convert" ? "border-purple-500 text-white" : "border-transparent text-gray-400"
+                    activeTab === "convert" ? "border-green-500 text-white" : "border-transparent text-gray-400"
                   }`}
                 >
                   Convert
@@ -228,7 +243,7 @@ const Dashboard = () => {
 
               {/* Coin Selector */}
               <div className="mb-6">
-                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-purple-500/50 transition-colors">
+                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-green-500/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center">
                       <span className="text-white font-bold text-xs">₿</span>
@@ -255,7 +270,7 @@ const Dashboard = () => {
               {/* Pay with */}
               <div className="mb-4">
                 <p className="text-xs text-gray-400 mb-2">Pay with</p>
-                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-purple-500/50 transition-colors">
+                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-green-500/50 transition-colors">
                   <span className="text-sm text-gray-300">Select a payment method</span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
@@ -264,14 +279,14 @@ const Dashboard = () => {
               {/* Buy now */}
               <div className="mb-6">
                 <p className="text-xs text-gray-400 mb-2">Buy now</p>
-                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-purple-500/50 transition-colors">
+                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-green-500/50 transition-colors">
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
 
               {/* Review Button */}
               <Button 
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium"
                 onClick={() => navigate("/cryptocurrencies")}
               >
                 Review

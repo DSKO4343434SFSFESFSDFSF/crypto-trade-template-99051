@@ -16,7 +16,7 @@ export const ForYouCard = ({ icon, title, description, variant = "default" }: Fo
   return (
     <div className={`relative rounded-lg p-4 border ${
       variant === "gradient" 
-        ? "bg-gradient-to-br from-purple-950/30 to-indigo-950/30 border-purple-500/30" 
+        ? "bg-gradient-to-br from-green-950/30 to-emerald-950/30 border-green-500/30" 
         : "bg-[#1A1A1A] border-white/10"
     }`}>
       <button 
