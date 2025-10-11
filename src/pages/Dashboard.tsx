@@ -15,18 +15,32 @@ import Footer from "@/components/Footer";
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [userName, setUserName] = useState<string>("");
   const [coins, setCoins] = useState<CoinData[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [globalData, setGlobalData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication
+    // Check authentication and fetch user profile
+    const fetchUserProfile = async (userId: string) => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", userId)
+        .single();
+      
+      if (profile && profile.first_name && profile.last_name) {
+        setUserName(`${profile.first_name} ${profile.last_name}`);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUserProfile(session.user.id);
       }
     });
 
@@ -35,6 +49,7 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUserProfile(session.user.id);
       }
     });
 
@@ -127,8 +142,7 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold text-primary">Nexbit</h1>
               <div className="flex gap-6">
                 <button className="text-sm font-medium text-foreground">Dashboard</button>
-                <button onClick={() => navigate("/reports")} className="text-sm font-medium text-muted-foreground hover:text-foreground">Reports</button>
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Cryptocurrency</button>
+                <button onClick={() => navigate("/cryptocurrencies")} className="text-sm font-medium text-muted-foreground hover:text-foreground">Cryptocurrencies</button>
                 <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Exchange</button>
                 <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Community</button>
               </div>
@@ -136,10 +150,10 @@ const Dashboard = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-medium">{user?.email?.[0].toUpperCase()}</span>
+                  <span className="text-sm font-medium">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">{user?.email?.split('@')[0]}</p>
+                  <p className="text-sm font-medium">{userName || user?.email?.split('@')[0]}</p>
                   <button onClick={handleSignOut} className="text-xs text-muted-foreground hover:text-foreground">
                     Sign out
                   </button>
@@ -155,7 +169,7 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-3xl font-bold mb-2">Welcome back, {user?.email?.split('@')[0]}</h2>
+            <h2 className="text-3xl font-bold mb-2">Welcome back, {userName || user?.email?.split('@')[0]}</h2>
             <p className="text-muted-foreground">Here's take a look at your performance and analytics.</p>
           </div>
           <div className="flex items-center gap-4">

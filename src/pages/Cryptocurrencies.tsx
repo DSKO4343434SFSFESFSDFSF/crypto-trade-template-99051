@@ -6,19 +6,34 @@ import { CoinCard } from "@/components/dashboard/CoinCard";
 import { CoinDetailModal } from "@/components/dashboard/CoinDetailModal";
 import { toast } from "sonner";
 
-const Reports = () => {
+const Cryptocurrencies = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [userName, setUserName] = useState<string>("");
   const [coins, setCoins] = useState<CoinData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
 
   useEffect(() => {
+    // Check authentication and fetch user profile
+    const fetchUserProfile = async (userId: string) => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", userId)
+        .single();
+      
+      if (profile && profile.first_name && profile.last_name) {
+        setUserName(`${profile.first_name} ${profile.last_name}`);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUserProfile(session.user.id);
       }
     });
 
@@ -27,6 +42,7 @@ const Reports = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUserProfile(session.user.id);
       }
     });
 
@@ -77,8 +93,7 @@ const Reports = () => {
                 <button onClick={() => navigate("/dashboard")} className="text-sm font-medium text-muted-foreground hover:text-foreground">
                   Dashboard
                 </button>
-                <button className="text-sm font-medium text-foreground">Reports</button>
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Cryptocurrency</button>
+                <button className="text-sm font-medium text-foreground">Cryptocurrencies</button>
                 <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Exchange</button>
                 <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Community</button>
               </div>
@@ -86,10 +101,10 @@ const Reports = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-medium">{user?.email?.[0].toUpperCase()}</span>
+                  <span className="text-sm font-medium">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">{user?.email?.split('@')[0]}</p>
+                  <p className="text-sm font-medium">{userName || user?.email?.split('@')[0]}</p>
                   <button onClick={handleSignOut} className="text-xs text-muted-foreground hover:text-foreground">
                     Sign out
                   </button>
@@ -103,7 +118,7 @@ const Reports = () => {
       {/* Main Content */}
       <main className="container px-6 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Cryptocurrency Reports</h2>
+          <h2 className="text-3xl font-bold mb-2">Cryptocurrencies</h2>
           <p className="text-muted-foreground">Track real-time prices, market cap, and 24h changes for top cryptocurrencies.</p>
         </div>
 
@@ -134,4 +149,4 @@ const Reports = () => {
   );
 };
 
-export default Reports;
+export default Cryptocurrencies;

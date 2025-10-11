@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import Reports from "./pages/Reports";
+import Cryptocurrencies from "./pages/Cryptocurrencies";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +21,7 @@ const App = () => (
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/reports" element={<Reports />} />
+        <Route path="/cryptocurrencies" element={<Cryptocurrencies />} />
       </Routes>
         </BrowserRouter>
       </div>
