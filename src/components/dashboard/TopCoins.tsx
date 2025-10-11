@@ -6,7 +6,7 @@ interface CoinPerformance {
   id: string;
   name: string;
   symbol: string;
-  icon: string;
+  image: string;
   current_price: number;
   price_change_percentage_24h: number;
   market_cap: number;
@@ -75,7 +75,7 @@ export const TopCoins = ({ coins }: TopCoinsProps) => {
                   <div className="flex items-center gap-3 flex-1">
                     <div className="relative">
                       <img 
-                        src={coin.icon} 
+                        src={coin.image} 
                         alt={coin.name} 
                         className="w-10 h-10 rounded-full ring-2 ring-border group-hover:ring-primary/50 transition-all" 
                       />

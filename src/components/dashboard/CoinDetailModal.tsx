@@ -8,8 +8,9 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { fetchCoinChart, CoinData } from "@/services/coingecko";
 import { addToPortfolio, removeFromPortfolio, isInPortfolio } from "@/services/portfolio";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Plus, Check, Trash2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Plus, Check, Trash2, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
+import { BuyCoinModal } from "./BuyCoinModal";
 
 interface CoinDetailModalProps {
   coin: CoinData;
@@ -30,6 +31,7 @@ export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: Co
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<number>(1);
   const [inPortfolio, setInPortfolio] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -111,8 +113,9 @@ export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: Co
   }, [coin.id, isOpen, timeRange]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -134,26 +137,35 @@ export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: Co
                 </div>
               </div>
             </div>
-            <Button 
-              onClick={handlePortfolioToggle}
-              variant={inPortfolio ? "outline" : "default"}
-              className={cn(
-                "gap-2",
-                !inPortfolio && "button-gradient"
-              )}
-            >
-              {inPortfolio ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  In Portfolio
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Add to Portfolio
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowBuyModal(true)}
+                className="gap-2 button-gradient"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Buy
+              </Button>
+              <Button 
+                onClick={handlePortfolioToggle}
+                variant={inPortfolio ? "outline" : "default"}
+                className={cn(
+                  "gap-2",
+                  !inPortfolio && "button-gradient"
+                )}
+              >
+                {inPortfolio ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    In Portfolio
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Add to Portfolio
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -205,6 +217,14 @@ export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: Co
         </Card>
       </DialogContent>
     </Dialog>
+    
+    <BuyCoinModal
+      coin={coin}
+      isOpen={showBuyModal}
+      onClose={() => setShowBuyModal(false)}
+      onSuccess={onPortfolioChange}
+    />
+    </>
   );
 };
 
