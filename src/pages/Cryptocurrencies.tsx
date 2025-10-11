@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTopCoins, CoinData } from "@/services/coingecko";
 import { CoinDetailModal } from "@/components/dashboard/CoinDetailModal";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { toast } from "sonner";
 import { Heart, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -154,6 +155,7 @@ const Cryptocurrencies = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {user && <NotificationBell userId={user.id} />}
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                   <span className="text-sm font-medium">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
@@ -179,7 +181,7 @@ const Cryptocurrencies = () => {
 
         {/* Table Header */}
         <div className="bg-background/50 border border-border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-[50px_40px_2fr_1.5fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1fr_1.5fr] gap-4 px-6 py-4 bg-muted/30 border-b border-border text-sm font-medium text-muted-foreground">
+          <div className="grid grid-cols-[50px_40px_2fr_1.5fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1.5fr] gap-4 px-6 py-4 bg-muted/30 border-b border-border text-sm font-medium text-muted-foreground">
             <div className="text-center">#</div>
             <div></div>
             <div>Coin</div>
@@ -187,7 +189,6 @@ const Cryptocurrencies = () => {
             <div className="text-right">Market Cap</div>
             <div className="text-right">Volume 24h</div>
             <div className="text-right">Liquidity ±2%</div>
-            <div className="text-right">All-time High</div>
             <div className="text-right">1h</div>
             <div className="text-right">24h</div>
             <div className="text-right">Your Holdings</div>
@@ -204,7 +205,7 @@ const Cryptocurrencies = () => {
                 <div
                   key={coin.id}
                   onClick={() => setSelectedCoin(coin)}
-                  className="grid grid-cols-[50px_40px_2fr_1.5fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1fr_1.5fr] gap-4 px-6 py-4 hover:bg-muted/20 cursor-pointer transition-colors items-center"
+                  className="grid grid-cols-[50px_40px_2fr_1.5fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1.5fr] gap-4 px-6 py-4 hover:bg-muted/20 cursor-pointer transition-colors items-center"
                 >
                   {/* Rank */}
                   <div className="text-center text-muted-foreground">{index + 1}</div>
@@ -244,14 +245,6 @@ const Cryptocurrencies = () => {
                   {/* Liquidity (placeholder) */}
                   <div className="text-right text-muted-foreground">
                     ${(coin.total_volume / 10000000000).toFixed(2)} B
-                  </div>
-                  
-                  {/* All-time High */}
-                  <div className="text-right text-muted-foreground">
-                    ${coin.high_24h.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: coin.high_24h < 1 ? 6 : 2 
-                    })}
                   </div>
                   
                   {/* 1h Change */}

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { PriceChart } from "@/components/dashboard/PriceChart";
-import { CreditScore } from "@/components/dashboard/CreditScore";
-import { TopCoins } from "@/components/dashboard/TopCoins";
+import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { YourHoldings } from "@/components/dashboard/YourHoldings";
 import { CoinCard } from "@/components/dashboard/CoinCard";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { fetchTopCoins, fetchCoinChart, fetchGlobalData, CoinData } from "@/services/coingecko";
 import { getPortfolio } from "@/services/portfolio";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ const Dashboard = () => {
   const [portfolioCoins, setPortfolioCoins] = useState<Array<{ id: string; name: string; symbol: string; color: string }>>([]);
   const [globalData, setGlobalData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [spentThisMonth, setSpentThisMonth] = useState(0);
 
   useEffect(() => {
     // Check authentication and fetch user profile
@@ -58,6 +60,39 @@ const Dashboard = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+    // Load spent this month data
+    const loadSpentThisMonth = async () => {
+      if (!user) return;
+
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const { data, error } = await supabase
+        .from("user_purchases")
+        .select("total_cost")
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .gte("purchase_date", firstDayOfMonth.toISOString())
+        .lte("purchase_date", lastDayOfMonth.toISOString());
+
+      if (error) {
+        console.error("Error loading spent this month:", error);
+        return;
+      }
+
+      const totalSpent = data?.reduce((sum, purchase) => {
+        // Only count positive values (purchases, not sells)
+        return sum + Math.max(0, purchase.total_cost);
+      }, 0) || 0;
+
+      setSpentThisMonth(totalSpent);
+    };
+
+    loadSpentThisMonth();
+  }, [user]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -201,6 +236,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {user && <NotificationBell userId={user.id} />}
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                   <span className="text-sm font-medium">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
@@ -237,8 +273,8 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
           <StatsCard
             label="SPENT THIS MONTH"
-            value={`$${(totalVolume / 1000000000).toFixed(2)}B`}
-            change="2.34%"
+            value={`$${spentThisMonth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            change="Based on your purchases"
             isPositive={true}
           />
           <StatsCard
@@ -260,7 +296,7 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Chart and Score Section */}
+        {/* Chart and Holdings Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
             <PriceChart 
@@ -270,7 +306,7 @@ const Dashboard = () => {
             />
           </div>
           <div className="space-y-6">
-            <CreditScore score={660} percentage={80} lastCheck="21 Apr" />
+            {user && <YourHoldings userId={user.id} />}
             {bitcoin && (
               <CoinCard
                 name="Bitcoin"
@@ -285,8 +321,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Top Coins */}
-        <TopCoins coins={coins} />
+        {/* Recent Activity */}
+        {user && <RecentActivity userId={user.id} />}
       </main>
 
       {/* Footer */}

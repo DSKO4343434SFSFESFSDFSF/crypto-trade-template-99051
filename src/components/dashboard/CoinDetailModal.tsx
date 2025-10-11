@@ -8,9 +8,11 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { fetchCoinChart, CoinData } from "@/services/coingecko";
 import { addToPortfolio, removeFromPortfolio, isInPortfolio } from "@/services/portfolio";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Plus, Check, Trash2, ShoppingCart } from "lucide-react";
+import { TrendingUp, TrendingDown, Plus, Check, Trash2, ShoppingCart, ArrowDownUp } from "lucide-react";
 import { toast } from "sonner";
 import { BuyCoinModal } from "./BuyCoinModal";
+import { SellCoinModal } from "./SellCoinModal";
+import { SwapCoinModal } from "./SwapCoinModal";
 
 interface CoinDetailModalProps {
   coin: CoinData;
@@ -32,6 +34,8 @@ export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: Co
   const [timeRange, setTimeRange] = useState<number>(1);
   const [inPortfolio, setInPortfolio] = useState(false);
   const [showBuyModal, setShowBuyModal] = useState(false);
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -146,6 +150,22 @@ export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: Co
                 Buy
               </Button>
               <Button 
+                onClick={() => setShowSellModal(true)}
+                variant="outline"
+                className="gap-2 border-green-500/50 text-green-500 hover:bg-green-500/10"
+              >
+                <TrendingDown className="w-4 h-4" />
+                Sell
+              </Button>
+              <Button 
+                onClick={() => setShowSwapModal(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <ArrowDownUp className="w-4 h-4" />
+                Swap
+              </Button>
+              <Button 
                 onClick={handlePortfolioToggle}
                 variant={inPortfolio ? "outline" : "default"}
                 className={cn(
@@ -222,6 +242,20 @@ export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: Co
       coin={coin}
       isOpen={showBuyModal}
       onClose={() => setShowBuyModal(false)}
+      onSuccess={onPortfolioChange}
+    />
+    
+    <SellCoinModal
+      coin={coin}
+      isOpen={showSellModal}
+      onClose={() => setShowSellModal(false)}
+      onSuccess={onPortfolioChange}
+    />
+    
+    <SwapCoinModal
+      initialCoin={coin}
+      isOpen={showSwapModal}
+      onClose={() => setShowSwapModal(false)}
       onSuccess={onPortfolioChange}
     />
     </>
