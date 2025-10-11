@@ -12,7 +12,7 @@ interface WatchlistCardProps {
 
 export const WatchlistCard = ({ name, symbol, icon, price, change, isPositive, chartData }: WatchlistCardProps) => {
   return (
-    <div className="bg-[#1A1A1A] border border-white/10 rounded-lg p-4 hover:border-purple-500/50 transition-all cursor-pointer">
+    <div className="bg-[#1A1A1A] border border-white/10 rounded-lg p-4 hover:border-green-500/50 transition-all cursor-pointer">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <img src={icon} alt={name} className="w-8 h-8 rounded-full" />
