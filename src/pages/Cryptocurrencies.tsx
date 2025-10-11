@@ -13,6 +13,7 @@ const Cryptocurrencies = () => {
   const [coins, setCoins] = useState<CoinData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
+  const [portfolioVersion, setPortfolioVersion] = useState(0);
 
   useEffect(() => {
     // Check authentication and fetch user profile
