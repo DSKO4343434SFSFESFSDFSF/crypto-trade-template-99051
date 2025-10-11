@@ -68,6 +68,7 @@ paste me in SQL editor/
 ├── 03_sample_data.sql             🪙 15 sample coins
 ├── 04_add_more_coins_template.sql ➕ How to add coins
 ├── 05_useful_queries.sql          🔍 Portfolio analytics queries
+├── 06_add_tether_usdt.sql         💵 Add Tether (USDT) coin
 └── README.md                      📖 This file
 ```
 
@@ -186,6 +187,7 @@ All files in this folder are ready to use:
 | `03_sample_data.sql` | Sample coins (already in #00) | - |
 | `04_add_more_coins_template.sql` | Templates for adding coins | As needed |
 | `05_useful_queries.sql` | Portfolio analytics | As needed |
+| `06_add_tether_usdt.sql` | Add Tether/USDT coin | As needed |
 
 ---
 
