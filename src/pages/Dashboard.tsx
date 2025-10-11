@@ -2,15 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { StatsCard } from "@/components/dashboard/StatsCard";
-import { PriceChart } from "@/components/dashboard/PriceChart";
-import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { YourHoldings } from "@/components/dashboard/YourHoldings";
-import { CoinCard } from "@/components/dashboard/CoinCard";
+import { Bell, ChevronDown, Search, Grid3x3, TrendingUp, Zap, Heart } from "lucide-react";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
-import { fetchTopCoins, fetchCoinChart, fetchGlobalData, CoinData } from "@/services/coingecko";
-import { getPortfolio } from "@/services/portfolio";
+import { PromoBanner } from "@/components/dashboard/PromoBanner";
+import { ForYouCard } from "@/components/dashboard/ForYouCard";
+import { WatchlistCard } from "@/components/dashboard/WatchlistCard";
+import { fetchTopCoins, CoinData } from "@/services/coingecko";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
 
@@ -19,12 +16,8 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState<string>("");
   const [coins, setCoins] = useState<CoinData[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [portfolioChartData, setPortfolioChartData] = useState<any[]>([]);
-  const [portfolioCoins, setPortfolioCoins] = useState<Array<{ id: string; name: string; symbol: string; color: string }>>([]);
-  const [globalData, setGlobalData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [spentThisMonth, setSpentThisMonth] = useState(0);
+  const [activeTab, setActiveTab] = useState<"buy" | "sell" | "convert">("buy");
 
   useEffect(() => {
     // Check authentication and fetch user profile
@@ -62,117 +55,11 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    // Load spent this month data
-    const loadSpentThisMonth = async () => {
-      if (!user) return;
-
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-      const { data, error } = await supabase
-        .from("user_purchases")
-        .select("total_cost")
-        .eq("user_id", user.id)
-        .eq("status", "completed")
-        .gte("purchase_date", firstDayOfMonth.toISOString())
-        .lte("purchase_date", lastDayOfMonth.toISOString());
-
-      if (error) {
-        console.error("Error loading spent this month:", error);
-        return;
-      }
-
-      const totalSpent = data?.reduce((sum, purchase) => {
-        // Only count positive values (purchases, not sells)
-        return sum + Math.max(0, purchase.total_cost);
-      }, 0) || 0;
-
-      setSpentThisMonth(totalSpent);
-    };
-
-    loadSpentThisMonth();
-  }, [user]);
-
-  useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [coinsData, btcChart, ethChart, global] = await Promise.all([
-          fetchTopCoins(),
-          fetchCoinChart('bitcoin', 1),
-          fetchCoinChart('ethereum', 1),
-          fetchGlobalData(),
-        ]);
-
+        const coinsData = await fetchTopCoins();
         setCoins(coinsData);
-        setGlobalData(global);
-
-        // Combine BTC and ETH chart data
-        const combined = btcChart.prices.map((btcPrice, index) => {
-          const ethPrice = ethChart.prices[index];
-          return {
-            time: new Date(btcPrice[0]).toLocaleTimeString('en-US', { 
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true 
-            }),
-            btc: Math.round(btcPrice[1]),
-            eth: Math.round(ethPrice[1]),
-          };
-        }).filter((_, index) => index % 4 === 0); // Sample every 4th point for cleaner display
-
-        setChartData(combined);
-
-        // Load portfolio data
-        const portfolio = getPortfolio();
-        if (portfolio.length > 0) {
-          // Fetch chart data for portfolio coins
-          const portfolioChartPromises = portfolio.map(coin => 
-            fetchCoinChart(coin.id, 1).catch(() => ({ prices: [] }))
-          );
-          const portfolioCharts = await Promise.all(portfolioChartPromises);
-          
-          // Find portfolio coins in the loaded coins data
-          const portfolioCoinsData = portfolio.map(pCoin => {
-            const coinData = coinsData.find(c => c.id === pCoin.id);
-            return coinData ? {
-              id: pCoin.id,
-              name: pCoin.name,
-              symbol: pCoin.symbol,
-              color: '',
-              current_price: coinData.current_price
-            } : null;
-          }).filter(Boolean) as Array<{ id: string; name: string; symbol: string; color: string; current_price: number }>;
-
-          setPortfolioCoins(portfolioCoinsData);
-
-          // Combine portfolio chart data
-          if (portfolioCharts.length > 0 && portfolioCharts[0].prices.length > 0) {
-            const portfolioCombined = portfolioCharts[0].prices.map((_, index) => {
-              const dataPoint: any = {
-                time: new Date(portfolioCharts[0].prices[index][0]).toLocaleTimeString('en-US', { 
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true 
-                })
-              };
-              
-              portfolioCharts.forEach((chart, chartIndex) => {
-                if (chart.prices[index]) {
-                  dataPoint[portfolioCoinsData[chartIndex].symbol] = Math.round(chart.prices[index][1]);
-                }
-              });
-              
-              return dataPoint;
-            }).filter((_, index) => index % 4 === 0);
-            
-            setPortfolioChartData(portfolioCombined);
-          }
-        } else {
-          setPortfolioCoins([]);
-          setPortfolioChartData([]);
-        }
       } catch (error) {
         toast.error("Failed to load market data");
         console.error(error);
@@ -192,60 +79,67 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const bitcoin = coins.find(c => c.id === 'bitcoin');
-  const totalMarketCap = globalData?.total_market_cap?.usd || 0;
-  const totalVolume = globalData?.total_volume?.usd || 0;
-
-  // Mock transaction data
-  const transactions = coins.slice(0, 4).map((coin, index) => ({
-    id: coin.id,
-    name: coin.name,
-    icon: coin.image,
-    change: `${coin.price_change_percentage_24h.toFixed(2)}%`,
-    date: new Date(Date.now() - index * 86400000).toLocaleDateString('en-US', { 
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric' 
-    }),
-    price: `$ ${coin.current_price.toLocaleString()}`,
-    status: 'success' as const,
-    isPositive: coin.price_change_percentage_24h > 0,
-  }));
+  // Generate sparkline data for charts (mock data based on price change)
+  const generateSparklineData = (priceChange: number) => {
+    const baseValue = 100;
+    const data = [];
+    const trend = priceChange > 0 ? 1 : -1;
+    
+    for (let i = 0; i < 20; i++) {
+      const variation = Math.random() * 10 - 5;
+      const value = baseValue + (i * trend * 0.5) + variation;
+      data.push(value);
+    }
+    
+    return data;
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <p className="text-muted-foreground">Loading dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0A0A0A]">
       {/* Top Navigation */}
-      <nav className="border-b border-border">
+      <nav className="border-b border-white/5 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="container px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold text-primary">Nexbit</h1>
-              <div className="flex gap-6">
-                <button className="text-sm font-medium text-foreground">Dashboard</button>
-                <button onClick={() => navigate("/cryptocurrencies")} className="text-sm font-medium text-muted-foreground hover:text-foreground">Cryptocurrencies</button>
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Exchange</button>
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Community</button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">N</span>
+              </div>
+              <h1 className="text-xl font-bold text-white">Nexbit</h1>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="flex-1 max-w-xl mx-8">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input 
+                  type="text" 
+                  placeholder="Search for assets, markets & more" 
+                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-20 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-white/10 rounded text-xs text-muted-foreground">
+                  Ctrl K
+                </div>
               </div>
             </div>
+
             <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
+                <TrendingUp className="w-4 h-4 mr-2" />
+                Transfer
+              </Button>
+              <Grid3x3 className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-foreground" />
               {user && <NotificationBell userId={user.id} />}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-medium">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{userName || user?.email?.split('@')[0]}</p>
-                  <button onClick={handleSignOut} className="text-xs text-muted-foreground hover:text-foreground">
-                    Sign out
-                  </button>
+              <div className="flex items-center gap-3 ml-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
+                  <span className="text-sm font-medium text-white">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
                 </div>
               </div>
             </div>
@@ -255,74 +149,154 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="container px-6 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold mb-2">Welcome back, {userName || user?.email?.split('@')[0]}</h2>
-            <p className="text-muted-foreground">Here's take a look at your performance and analytics.</p>
+        {/* Promo Banner */}
+        <PromoBanner />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Portfolio & Watchlist */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Portfolio Value */}
+            <div>
+              <p className="text-sm text-gray-400 mb-2">Portfolio value</p>
+              <div className="flex items-center gap-4 mb-6">
+                <h2 className="text-4xl font-bold text-white">$0.00</h2>
+                <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/5 text-white">
+                  <span className="text-sm">↓</span>
+                  <span className="ml-1">Deposit</span>
+                </Button>
+              </div>
+              
+              {/* For You Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">For You</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <ForYouCard 
+                    icon={<Zap className="w-5 h-5 text-yellow-400" />}
+                    title="Zero trading fees with Kraken+"
+                    description="Start your free trial"
+                    variant="gradient"
+                  />
+                  <ForYouCard 
+                    icon={<TrendingUp className="w-5 h-5 text-blue-400" />}
+                    title="Start your DCA journey"
+                    description="Start with BTC and build your crypto habit"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Watchlist */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Watchlist</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {coins.slice(0, 9).map((coin) => (
+                  <WatchlistCard
+                    key={coin.id}
+                    name={coin.name}
+                    symbol={coin.symbol.toUpperCase()}
+                    icon={coin.image}
+                    price={`$${coin.current_price.toLocaleString()}`}
+                    change={`${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%`}
+                    isPositive={coin.price_change_percentage_24h > 0}
+                    chartData={generateSparklineData(coin.price_change_percentage_24h)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Most Popular Global Markets */}
+            <div className="mt-8">
+              <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                Most Popular Global Markets <Heart className="w-6 h-6 text-purple-500 fill-purple-500" />
+              </h3>
+              <p className="text-sm text-gray-400">Discover all the most popular assets on Nexbit</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button onClick={() => navigate("/cryptocurrencies")} className="button-gradient gap-2">
-              <Plus className="w-4 h-4" />
-              Add new coin
-            </Button>
+
+          {/* Right Column - Trading Panel */}
+          <div className="lg:col-span-1">
+            <div className="bg-[#1A1A1A] border border-white/10 rounded-lg p-6 sticky top-24">
+              {/* Tabs */}
+              <div className="flex gap-6 mb-6 border-b border-white/10">
+                <button 
+                  onClick={() => setActiveTab("buy")}
+                  className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
+                    activeTab === "buy" ? "border-purple-500 text-white" : "border-transparent text-gray-400"
+                  }`}
+                >
+                  Buy
+                </button>
+                <button 
+                  onClick={() => setActiveTab("sell")}
+                  className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
+                    activeTab === "sell" ? "border-purple-500 text-white" : "border-transparent text-gray-400"
+                  }`}
+                >
+                  Sell
+                </button>
+                <button 
+                  onClick={() => setActiveTab("convert")}
+                  className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
+                    activeTab === "convert" ? "border-purple-500 text-white" : "border-transparent text-gray-400"
+                  }`}
+                >
+                  Convert
+                </button>
+              </div>
+
+              {/* Coin Selector */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-purple-500/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">₿</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">Bitcoin</p>
+                    </div>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Amount Display */}
+              <div className="mb-8">
+                <div className="text-right">
+                  <div className="text-7xl font-light text-white mb-2">0</div>
+                  <div className="text-sm text-gray-400 flex items-center justify-end gap-1">
+                    <span>BTC</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pay with */}
+              <div className="mb-4">
+                <p className="text-xs text-gray-400 mb-2">Pay with</p>
+                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-purple-500/50 transition-colors">
+                  <span className="text-sm text-gray-300">Select a payment method</span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Buy now */}
+              <div className="mb-6">
+                <p className="text-xs text-gray-400 mb-2">Buy now</p>
+                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-purple-500/50 transition-colors">
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Review Button */}
+              <Button 
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                onClick={() => navigate("/cryptocurrencies")}
+              >
+                Review
+              </Button>
+            </div>
           </div>
         </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-          <StatsCard
-            label="SPENT THIS MONTH"
-            value={`$${spentThisMonth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            change="Based on your purchases"
-            isPositive={true}
-          />
-          <StatsCard
-            label="24H% CHANGE"
-            value={bitcoin ? `${bitcoin.price_change_percentage_24h.toFixed(2)}%` : "N/A"}
-            isPositive={bitcoin ? bitcoin.price_change_percentage_24h > 0 : false}
-          />
-          <StatsCard
-            label="VOLUME (24H)"
-            value={`$${(totalVolume / 1000000000).toFixed(2)}B`}
-          />
-          <StatsCard
-            label="MARKET CAP"
-            value={`$${(totalMarketCap / 1000000000000).toFixed(2)}T`}
-          />
-          <StatsCard
-            label="AVG MONTHLY GROWING"
-            value={`$${(totalMarketCap / 1000000000000).toFixed(2)}T`}
-          />
-        </div>
-
-        {/* Chart and Holdings Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2">
-            <PriceChart 
-              data={chartData} 
-              portfolioData={portfolioChartData}
-              portfolioCoins={portfolioCoins}
-            />
-          </div>
-          <div className="space-y-6">
-            {user && <YourHoldings userId={user.id} />}
-            {bitcoin && (
-              <CoinCard
-                name="Bitcoin"
-                symbol="BTC"
-                icon={bitcoin.image}
-                price={`$${bitcoin.current_price.toLocaleString()}`}
-                change={`${bitcoin.price_change_percentage_24h.toFixed(2)}%`}
-                isPositive={bitcoin.price_change_percentage_24h > 0}
-                rewardRate="14.74%"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        {user && <RecentActivity userId={user.id} />}
       </main>
 
       {/* Footer */}
