@@ -9,6 +9,7 @@ import { WatchlistCard } from "@/components/dashboard/WatchlistCard";
 import { fetchTopCoins, CoinData } from "@/services/coingecko";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
+import Sidebar from "@/components/Sidebar";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -118,7 +119,12 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <div className="min-h-screen bg-[#0A0A0A] flex">
+      {/* Sidebar */}
+      <Sidebar className="w-64 fixed left-0 top-0 bottom-0 z-40" />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 ml-64">
       {/* Top Navigation */}
       <nav className="border-b border-white/5 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-[1800px] mx-auto px-8 py-4">
@@ -185,7 +191,7 @@ const Dashboard = () => {
             {/* Watchlist */}
             <div>
               <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Watchlist</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {coins.slice(0, 9).map((coin) => (
                   <WatchlistCard
                     key={coin.id}
@@ -214,10 +220,10 @@ const Dashboard = () => {
           <div className="lg:col-span-1">
             <div className="bg-[#1A1A1A] border border-white/10 rounded-lg p-6 sticky top-24">
               {/* Tabs */}
-              <div className="flex gap-6 mb-6 border-b border-white/10">
+              <div className="flex gap-3 mb-6 border-b border-white/10">
                 <button 
                   onClick={() => setActiveTab("buy")}
-                  className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
+                  className={`text-xs font-medium pb-2 px-2 border-b-2 transition-colors ${
                     activeTab === "buy" ? "border-green-500 text-white" : "border-transparent text-gray-400"
                   }`}
                 >
@@ -225,7 +231,7 @@ const Dashboard = () => {
                 </button>
                 <button 
                   onClick={() => setActiveTab("sell")}
-                  className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
+                  className={`text-xs font-medium pb-2 px-2 border-b-2 transition-colors ${
                     activeTab === "sell" ? "border-green-500 text-white" : "border-transparent text-gray-400"
                   }`}
                 >
@@ -233,7 +239,7 @@ const Dashboard = () => {
                 </button>
                 <button 
                   onClick={() => setActiveTab("convert")}
-                  className={`text-sm font-medium pb-3 border-b-2 transition-colors ${
+                  className={`text-xs font-medium pb-2 px-2 border-b-2 transition-colors ${
                     activeTab === "convert" ? "border-green-500 text-white" : "border-transparent text-gray-400"
                   }`}
                 >
@@ -298,6 +304,7 @@ const Dashboard = () => {
 
       {/* Footer */}
       <Footer />
+      </div>
     </div>
   );
 };

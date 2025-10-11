@@ -7,6 +7,7 @@ import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { toast } from "sonner";
 import { Heart, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Sidebar from "@/components/Sidebar";
 
 interface UserHolding {
   cryptocurrency_id: string;
@@ -138,7 +139,12 @@ const Cryptocurrencies = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <Sidebar className="w-64 fixed left-0 top-0 bottom-0 z-40" />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 ml-64">
       {/* Top Navigation */}
       <nav className="border-b border-border">
         <div className="container px-6 py-4">
@@ -295,6 +301,7 @@ const Cryptocurrencies = () => {
           onPortfolioChange={() => setPortfolioVersion(v => v + 1)}
         />
       )}
+      </div>
     </div>
   );
 };
