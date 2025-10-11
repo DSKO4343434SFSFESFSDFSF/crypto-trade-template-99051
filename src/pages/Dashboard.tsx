@@ -155,33 +155,15 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Portfolio & Watchlist */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Portfolio Value */}
+              {/* Portfolio Value */}
             <div>
               <p className="text-sm text-gray-400 mb-2">Portfolio value</p>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-4xl font-bold text-white">$0.00</h2>
+                <h2 className="text-4xl font-bold text-white">${portfolioValue.toFixed(2)}</h2>
                 <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/5 text-white">
                   <span className="text-sm">↓</span>
                   <span className="ml-1">Deposit</span>
                 </Button>
-              </div>
-              
-              {/* For You Section */}
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">For You</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <ForYouCard 
-                    icon={<Zap className="w-5 h-5 text-yellow-400" />}
-                    title="Zero trading fees with Kraken+"
-                    description="Start your free trial"
-                    variant="gradient"
-                  />
-                  <ForYouCard 
-                    icon={<TrendingUp className="w-5 h-5 text-blue-400" />}
-                    title="Start your DCA journey"
-                    description="Start with BTC and build your crypto habit"
-                  />
-                </div>
               </div>
             </div>
 
