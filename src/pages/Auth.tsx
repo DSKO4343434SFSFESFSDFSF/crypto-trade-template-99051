@@ -160,6 +160,64 @@ const Auth = () => {
 
   const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate First Name and Last Name - no numbers allowed
+    const nameRegex = /^[a-zA-Z\s-']+$/;
+    if (!nameRegex.test(firstName)) {
+      toast({
+        title: "Invalid First Name",
+        description: "First name cannot contain numbers or special characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!nameRegex.test(lastName)) {
+      toast({
+        title: "Invalid Last Name",
+        description: "Last name cannot contain numbers or special characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate City - no numbers allowed
+    if (!nameRegex.test(city)) {
+      toast({
+        title: "Invalid City",
+        description: "City name cannot contain numbers.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate age - must be 18 or older
+    if (!dateOfBirth) {
+      toast({
+        title: "Date of Birth Required",
+        description: "Please select your date of birth.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    if (age < 18) {
+      toast({
+        title: "Age Requirement",
+        description: "You must be at least 18 years old to register.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setStep(3);
   };
 
@@ -422,7 +480,13 @@ const Auth = () => {
                       type="text"
                       placeholder="John"
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Only allow letters, spaces, hyphens, and apostrophes
+                        if (value === '' || /^[a-zA-Z\s-']+$/.test(value)) {
+                          setFirstName(value);
+                        }
+                      }}
                       required
                       className="bg-white/5 border-white/10"
                     />
@@ -434,7 +498,13 @@ const Auth = () => {
                       type="text"
                       placeholder="Doe"
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Only allow letters, spaces, hyphens, and apostrophes
+                        if (value === '' || /^[a-zA-Z\s-']+$/.test(value)) {
+                          setLastName(value);
+                        }
+                      }}
                       required
                       className="bg-white/5 border-white/10"
                     />
@@ -488,7 +558,13 @@ const Auth = () => {
                       type="text"
                       placeholder="New York"
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Only allow letters, spaces, hyphens, and apostrophes
+                        if (value === '' || /^[a-zA-Z\s-']+$/.test(value)) {
+                          setCity(value);
+                        }
+                      }}
                       required
                       className="bg-white/5 border-white/10"
                     />
@@ -527,9 +603,19 @@ const Auth = () => {
                         mode="single"
                         selected={dateOfBirth}
                         onSelect={setDateOfBirth}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
-                        }
+                        disabled={(date) => {
+                          const today = new Date();
+                          const eighteenYearsAgo = new Date(
+                            today.getFullYear() - 18,
+                            today.getMonth(),
+                            today.getDate()
+                          );
+                          return date > eighteenYearsAgo || date < new Date("1900-01-01");
+                        }}
+                        defaultMonth={new Date(2000, 0)}
+                        captionLayout="dropdown-buttons"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear() - 18}
                         initialFocus
                         className="pointer-events-auto"
                       />

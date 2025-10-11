@@ -10,6 +10,7 @@ import { PaymentHistory } from "@/components/dashboard/PaymentHistory";
 import { CoinCard } from "@/components/dashboard/CoinCard";
 import { fetchTopCoins, fetchCoinChart, fetchGlobalData, CoinData } from "@/services/coingecko";
 import { toast } from "sonner";
+import Footer from "@/components/Footer";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -220,6 +221,9 @@ const Dashboard = () => {
         {/* Payment History */}
         <PaymentHistory transactions={transactions} />
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
