@@ -44,14 +44,15 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
         const coins = await fetchTopCoins(100);
         const coinPriceMap = new Map<string, CoinData>();
         
-        // Map coins by ID for quick lookup
+        // Map coins by SYMBOL (not ID) for quick lookup - this matches database symbols with API data
         coins.forEach(coin => {
-          coinPriceMap.set(coin.id, coin);
+          coinPriceMap.set(coin.symbol.toUpperCase(), coin);
         });
 
         // Calculate current values with real-time prices
         const updatedHoldings = (portfolioData || []).map(holding => {
-          const coin = coinPriceMap.get(holding.cryptocurrency_id);
+          // Match by symbol instead of ID (database uses text IDs, CoinLore uses numeric IDs)
+          const coin = coinPriceMap.get(holding.symbol.toUpperCase());
           const realTimePrice = coin?.current_price || holding.current_price;
           const currentValue = holding.total_amount * realTimePrice;
           const profitLoss = currentValue - holding.total_invested;
