@@ -143,6 +143,7 @@ const Cryptocurrencies = () => {
           coin={selectedCoin}
           isOpen={!!selectedCoin}
           onClose={() => setSelectedCoin(null)}
+          onPortfolioChange={() => setPortfolioVersion(v => v + 1)}
         />
       )}
     </div>

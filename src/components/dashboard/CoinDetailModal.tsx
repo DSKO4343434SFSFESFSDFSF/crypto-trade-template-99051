@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { fetchCoinChart, CoinData } from "@/services/coingecko";
+import { addToPortfolio, removeFromPortfolio, isInPortfolio } from "@/services/portfolio";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Plus, Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface CoinDetailModalProps {
   coin: CoinData;
   isOpen: boolean;
   onClose: () => void;
+  onPortfolioChange?: () => void;
 }
 
 const chartConfig = {
@@ -22,10 +25,40 @@ const chartConfig = {
   },
 };
 
-export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps) => {
+export const CoinDetailModal = ({ coin, isOpen, onClose, onPortfolioChange }: CoinDetailModalProps) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<number>(1);
+  const [inPortfolio, setInPortfolio] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setInPortfolio(isInPortfolio(coin.id));
+    }
+  }, [coin.id, isOpen]);
+
+  const handlePortfolioToggle = () => {
+    try {
+      if (inPortfolio) {
+        removeFromPortfolio(coin.id);
+        setInPortfolio(false);
+        toast.success(`${coin.name} removed from portfolio`);
+      } else {
+        addToPortfolio({
+          id: coin.id,
+          symbol: coin.symbol,
+          name: coin.name,
+          image: coin.image,
+          current_price: coin.current_price,
+        });
+        setInPortfolio(true);
+        toast.success(`${coin.name} added to portfolio! 🎉`);
+      }
+      onPortfolioChange?.();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update portfolio");
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -81,24 +114,46 @@ export const CoinDetailModal = ({ coin, isOpen, onClose }: CoinDetailModalProps)
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <img src={coin.image} alt={coin.name} className="w-10 h-10" />
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">{coin.name}</span>
-                <span className="text-lg text-muted-foreground">{coin.symbol.toUpperCase()}</span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-3xl font-bold">${coin.current_price.toLocaleString()}</span>
-                <span className={cn(
-                  "text-sm font-medium flex items-center gap-1",
-                  coin.price_change_percentage_24h > 0 ? "text-primary" : "text-destructive"
-                )}>
-                  {coin.price_change_percentage_24h > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {coin.price_change_percentage_24h.toFixed(2)}%
-                </span>
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={coin.image} alt={coin.name} className="w-10 h-10" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold">{coin.name}</span>
+                  <span className="text-lg text-muted-foreground">{coin.symbol.toUpperCase()}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-3xl font-bold">${coin.current_price.toLocaleString()}</span>
+                  <span className={cn(
+                    "text-sm font-medium flex items-center gap-1",
+                    coin.price_change_percentage_24h > 0 ? "text-primary" : "text-destructive"
+                  )}>
+                    {coin.price_change_percentage_24h > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    {coin.price_change_percentage_24h.toFixed(2)}%
+                  </span>
+                </div>
               </div>
             </div>
+            <Button 
+              onClick={handlePortfolioToggle}
+              variant={inPortfolio ? "outline" : "default"}
+              className={cn(
+                "gap-2",
+                !inPortfolio && "button-gradient"
+              )}
+            >
+              {inPortfolio ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  In Portfolio
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  Add to Portfolio
+                </>
+              )}
+            </Button>
           </DialogTitle>
         </DialogHeader>
 
