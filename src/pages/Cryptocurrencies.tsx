@@ -2,15 +2,23 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchTopCoins, CoinData } from "@/services/coingecko";
-import { CoinCard } from "@/components/dashboard/CoinCard";
 import { CoinDetailModal } from "@/components/dashboard/CoinDetailModal";
 import { toast } from "sonner";
+import { Heart, TrendingUp, TrendingDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface UserHolding {
+  cryptocurrency_id: string;
+  total_amount: number;
+  current_value: number;
+}
 
 const Cryptocurrencies = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState<string>("");
   const [coins, setCoins] = useState<CoinData[]>([]);
+  const [holdings, setHoldings] = useState<Map<string, UserHolding>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
   const [portfolioVersion, setPortfolioVersion] = useState(0);
@@ -51,11 +59,57 @@ const Cryptocurrencies = () => {
   }, [navigate]);
 
   useEffect(() => {
+    const loadUserHoldings = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_portfolio_summary')
+          .select('cryptocurrency_id, total_amount, current_value')
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+        
+        const holdingsMap = new Map<string, UserHolding>();
+        data?.forEach(holding => {
+          holdingsMap.set(holding.cryptocurrency_id, holding);
+        });
+        setHoldings(holdingsMap);
+      } catch (error) {
+        console.error("Error loading holdings:", error);
+      }
+    };
+
+    loadUserHoldings();
+  }, [user, portfolioVersion]);
+
+  useEffect(() => {
     const loadCoins = async () => {
       setLoading(true);
       try {
         const coinsData = await fetchTopCoins();
-        setCoins(coinsData);
+        
+        // Define priority coins order
+        const priorityOrder = ['bitcoin', 'ethereum', 'ripple', 'solana', 'tether', 'litecoin', 'binancecoin'];
+        
+        // Sort coins: priority coins first, then by market cap rank
+        const sortedCoins = coinsData.sort((a, b) => {
+          const aIndex = priorityOrder.indexOf(a.id);
+          const bIndex = priorityOrder.indexOf(b.id);
+          
+          // If both are priority coins, maintain the priority order
+          if (aIndex !== -1 && bIndex !== -1) {
+            return aIndex - bIndex;
+          }
+          // If only a is priority
+          if (aIndex !== -1) return -1;
+          // If only b is priority
+          if (bIndex !== -1) return 1;
+          // Neither are priority, sort by rank
+          return a.market_cap_rank - b.market_cap_rank;
+        });
+        
+        setCoins(sortedCoins);
       } catch (error) {
         toast.error("Failed to load coins");
         console.error(error);
@@ -123,19 +177,120 @@ const Cryptocurrencies = () => {
           <p className="text-muted-foreground">Track real-time prices, market cap, and 24h changes for top cryptocurrencies.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {coins.map((coin) => (
-            <div key={coin.id} onClick={() => setSelectedCoin(coin)} className="cursor-pointer transition-transform hover:scale-105">
-              <CoinCard
-                name={coin.name}
-                symbol={coin.symbol.toUpperCase()}
-                icon={coin.image}
-                price={`$${coin.current_price.toLocaleString()}`}
-                change={`${coin.price_change_percentage_24h.toFixed(2)}%`}
-                isPositive={coin.price_change_percentage_24h > 0}
-              />
-            </div>
-          ))}
+        {/* Table Header */}
+        <div className="bg-background/50 border border-border rounded-lg overflow-hidden">
+          <div className="grid grid-cols-[50px_40px_2fr_1.5fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1fr_1.5fr] gap-4 px-6 py-4 bg-muted/30 border-b border-border text-sm font-medium text-muted-foreground">
+            <div className="text-center">#</div>
+            <div></div>
+            <div>Coin</div>
+            <div className="text-right">Price</div>
+            <div className="text-right">Market Cap</div>
+            <div className="text-right">Volume 24h</div>
+            <div className="text-right">Liquidity ±2%</div>
+            <div className="text-right">All-time High</div>
+            <div className="text-right">1h</div>
+            <div className="text-right">24h</div>
+            <div className="text-right">Your Holdings</div>
+          </div>
+
+          {/* Table Rows */}
+          <div className="divide-y divide-border">
+            {coins.map((coin, index) => {
+              const holding = holdings.get(coin.id);
+              const isPositive24h = coin.price_change_percentage_24h > 0;
+              const isPositive1h = (coin.price_change_percentage_1h || 0) > 0;
+              
+              return (
+                <div
+                  key={coin.id}
+                  onClick={() => setSelectedCoin(coin)}
+                  className="grid grid-cols-[50px_40px_2fr_1.5fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1fr_1.5fr] gap-4 px-6 py-4 hover:bg-muted/20 cursor-pointer transition-colors items-center"
+                >
+                  {/* Rank */}
+                  <div className="text-center text-muted-foreground">{index + 1}</div>
+                  
+                  {/* Favorite Icon */}
+                  <div className="flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-muted-foreground/30 hover:text-red-500 transition-colors" />
+                  </div>
+                  
+                  {/* Coin Name */}
+                  <div className="flex items-center gap-3">
+                    <img src={coin.image} alt={coin.name} className="w-8 h-8 rounded-full" />
+                    <div>
+                      <div className="font-semibold text-foreground">{coin.name}</div>
+                      <div className="text-xs text-muted-foreground uppercase">{coin.symbol}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Price */}
+                  <div className="text-right font-medium">
+                    ${coin.current_price.toLocaleString(undefined, { 
+                      minimumFractionDigits: 2, 
+                      maximumFractionDigits: coin.current_price < 1 ? 6 : 2 
+                    })}
+                  </div>
+                  
+                  {/* Market Cap */}
+                  <div className="text-right text-muted-foreground">
+                    ${(coin.market_cap / 1000000000).toFixed(2)} B
+                  </div>
+                  
+                  {/* Volume 24h */}
+                  <div className="text-right text-muted-foreground">
+                    ${(coin.total_volume / 1000000000).toFixed(2)} B
+                  </div>
+                  
+                  {/* Liquidity (placeholder) */}
+                  <div className="text-right text-muted-foreground">
+                    ${(coin.total_volume / 10000000000).toFixed(2)} B
+                  </div>
+                  
+                  {/* All-time High */}
+                  <div className="text-right text-muted-foreground">
+                    ${coin.high_24h.toLocaleString(undefined, { 
+                      minimumFractionDigits: 2, 
+                      maximumFractionDigits: coin.high_24h < 1 ? 6 : 2 
+                    })}
+                  </div>
+                  
+                  {/* 1h Change */}
+                  <div className={cn(
+                    "text-right flex items-center justify-end gap-1 text-sm font-medium",
+                    isPositive1h ? "text-green-500" : "text-red-500"
+                  )}>
+                    {isPositive1h ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {Math.abs(coin.price_change_percentage_1h || 0).toFixed(2)}%
+                  </div>
+                  
+                  {/* 24h Change */}
+                  <div className={cn(
+                    "text-right flex items-center justify-end gap-1 text-sm font-medium",
+                    isPositive24h ? "text-green-500" : "text-red-500"
+                  )}>
+                    {isPositive24h ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
+                  </div>
+                  
+                  {/* Your Holdings */}
+                  <div className="text-right">
+                    {holding ? (
+                      <div>
+                        <div className="font-medium text-foreground">
+                          {holding.total_amount.toFixed(6)} {coin.symbol.toUpperCase()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ${holding.current_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </main>
 
