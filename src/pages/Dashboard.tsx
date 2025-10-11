@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Calendar, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { PriceChart } from "@/components/dashboard/PriceChart";
 import { CreditScore } from "@/components/dashboard/CreditScore";
-import { PaymentHistory } from "@/components/dashboard/PaymentHistory";
+import { TopCoins } from "@/components/dashboard/TopCoins";
 import { CoinCard } from "@/components/dashboard/CoinCard";
 import { fetchTopCoins, fetchCoinChart, fetchGlobalData, CoinData } from "@/services/coingecko";
+import { getPortfolio } from "@/services/portfolio";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
 
@@ -18,6 +19,8 @@ const Dashboard = () => {
   const [userName, setUserName] = useState<string>("");
   const [coins, setCoins] = useState<CoinData[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [portfolioChartData, setPortfolioChartData] = useState<any[]>([]);
+  const [portfolioCoins, setPortfolioCoins] = useState<Array<{ id: string; name: string; symbol: string; color: string }>>([]);
   const [globalData, setGlobalData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -85,6 +88,56 @@ const Dashboard = () => {
         }).filter((_, index) => index % 4 === 0); // Sample every 4th point for cleaner display
 
         setChartData(combined);
+
+        // Load portfolio data
+        const portfolio = getPortfolio();
+        if (portfolio.length > 0) {
+          // Fetch chart data for portfolio coins
+          const portfolioChartPromises = portfolio.map(coin => 
+            fetchCoinChart(coin.id, 1).catch(() => ({ prices: [] }))
+          );
+          const portfolioCharts = await Promise.all(portfolioChartPromises);
+          
+          // Find portfolio coins in the loaded coins data
+          const portfolioCoinsData = portfolio.map(pCoin => {
+            const coinData = coinsData.find(c => c.id === pCoin.id);
+            return coinData ? {
+              id: pCoin.id,
+              name: pCoin.name,
+              symbol: pCoin.symbol,
+              color: '',
+              current_price: coinData.current_price
+            } : null;
+          }).filter(Boolean) as Array<{ id: string; name: string; symbol: string; color: string; current_price: number }>;
+
+          setPortfolioCoins(portfolioCoinsData);
+
+          // Combine portfolio chart data
+          if (portfolioCharts.length > 0 && portfolioCharts[0].prices.length > 0) {
+            const portfolioCombined = portfolioCharts[0].prices.map((_, index) => {
+              const dataPoint: any = {
+                time: new Date(portfolioCharts[0].prices[index][0]).toLocaleTimeString('en-US', { 
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true 
+                })
+              };
+              
+              portfolioCharts.forEach((chart, chartIndex) => {
+                if (chart.prices[index]) {
+                  dataPoint[portfolioCoinsData[chartIndex].symbol] = Math.round(chart.prices[index][1]);
+                }
+              });
+              
+              return dataPoint;
+            }).filter((_, index) => index % 4 === 0);
+            
+            setPortfolioChartData(portfolioCombined);
+          }
+        } else {
+          setPortfolioCoins([]);
+          setPortfolioChartData([]);
+        }
       } catch (error) {
         toast.error("Failed to load market data");
         console.error(error);
@@ -173,11 +226,7 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Here's take a look at your performance and analytics.</p>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" className="gap-2">
-              <Calendar className="w-4 h-4" />
-              January 2024 - May 2024
-            </Button>
-            <Button className="button-gradient gap-2">
+            <Button onClick={() => navigate("/cryptocurrencies")} className="button-gradient gap-2">
               <Plus className="w-4 h-4" />
               Add new coin
             </Button>
@@ -214,7 +263,11 @@ const Dashboard = () => {
         {/* Chart and Score Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
-            <PriceChart data={chartData} />
+            <PriceChart 
+              data={chartData} 
+              portfolioData={portfolioChartData}
+              portfolioCoins={portfolioCoins}
+            />
           </div>
           <div className="space-y-6">
             <CreditScore score={660} percentage={80} lastCheck="21 Apr" />
@@ -232,8 +285,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Payment History */}
-        <PaymentHistory transactions={transactions} />
+        {/* Top Coins */}
+        <TopCoins coins={coins} />
       </main>
 
       {/* Footer */}
