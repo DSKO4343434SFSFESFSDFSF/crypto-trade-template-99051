@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fetchTopCoins, CoinData } from "@/services/coingecko";
 
 interface Holding {
   cryptocurrency_id: string;
@@ -13,6 +14,7 @@ interface Holding {
   current_value: number;
   profit_loss: number;
   profit_loss_percentage: number;
+  total_invested: number;
 }
 
 interface YourHoldingsProps {
@@ -30,17 +32,48 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
     const loadHoldings = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        // Fetch user holdings from database
+        const { data: portfolioData, error } = await supabase
           .from("user_portfolio_summary")
           .select("*")
-          .eq("user_id", userId)
-          .order("current_value", { ascending: false })
-          .limit(5);
+          .eq("user_id", userId);
 
         if (error) throw error;
 
-        setHoldings(data || []);
-        const total = data?.reduce((sum, h) => sum + h.current_value, 0) || 0;
+        // Fetch real-time prices from CoinLore API
+        const coins = await fetchTopCoins(100);
+        const coinPriceMap = new Map<string, CoinData>();
+        
+        // Map coins by ID for quick lookup
+        coins.forEach(coin => {
+          coinPriceMap.set(coin.id, coin);
+        });
+
+        // Calculate current values with real-time prices
+        const updatedHoldings = (portfolioData || []).map(holding => {
+          const coin = coinPriceMap.get(holding.cryptocurrency_id);
+          const realTimePrice = coin?.current_price || holding.current_price;
+          const currentValue = holding.total_amount * realTimePrice;
+          const profitLoss = currentValue - holding.total_invested;
+          const profitLossPercentage = holding.total_invested > 0 
+            ? (profitLoss / holding.total_invested) * 100 
+            : 0;
+
+          return {
+            ...holding,
+            current_value: currentValue,
+            profit_loss: profitLoss,
+            profit_loss_percentage: profitLossPercentage
+          };
+        });
+
+        // Sort by current value and take top 5
+        const sortedHoldings = updatedHoldings
+          .sort((a, b) => b.current_value - a.current_value)
+          .slice(0, 5);
+
+        setHoldings(sortedHoldings);
+        const total = sortedHoldings.reduce((sum, h) => sum + h.current_value, 0);
         setTotalValue(total);
       } catch (error) {
         console.error("Error loading holdings:", error);
@@ -50,6 +83,10 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
     };
 
     loadHoldings();
+
+    // Refresh holdings every minute to keep prices up-to-date
+    const interval = setInterval(loadHoldings, 60000);
+    return () => clearInterval(interval);
   }, [userId]);
 
   return (
