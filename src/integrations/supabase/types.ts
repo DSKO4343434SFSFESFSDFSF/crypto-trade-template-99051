@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      portfolio_settings: {
+        Row: {
+          id: string
+          user_id: string
+          default_trading_amount: number
+          preferred_currency: string
+          risk_tolerance: string
+          auto_rebalancing: boolean
+          rebalancing_frequency: string
+          target_allocation: Json
+          daily_trading_limit: number
+          stop_loss_percentage: number
+          take_profit_percentage: number
+          max_portfolio_exposure: number
+          price_alerts_enabled: boolean
+          portfolio_alerts_enabled: boolean
+          email_notifications: boolean
+          push_notifications: boolean
+          alert_thresholds: Json
+          theme_preference: string
+          chart_type: string
+          default_time_range: string
+          show_portfolio_value: boolean
+          show_profit_loss: boolean
+          paper_trading_mode: boolean
+          api_trading_enabled: boolean
+          two_factor_required: boolean
+          session_timeout_minutes: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          default_trading_amount?: number
+          preferred_currency?: string
+          risk_tolerance?: string
+          auto_rebalancing?: boolean
+          rebalancing_frequency?: string
+          target_allocation?: Json
+          daily_trading_limit?: number
+          stop_loss_percentage?: number
+          take_profit_percentage?: number
+          max_portfolio_exposure?: number
+          price_alerts_enabled?: boolean
+          portfolio_alerts_enabled?: boolean
+          email_notifications?: boolean
+          push_notifications?: boolean
+          alert_thresholds?: Json
+          theme_preference?: string
+          chart_type?: string
+          default_time_range?: string
+          show_portfolio_value?: boolean
+          show_profit_loss?: boolean
+          paper_trading_mode?: boolean
+          api_trading_enabled?: boolean
+          two_factor_required?: boolean
+          session_timeout_minutes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          default_trading_amount?: number
+          preferred_currency?: string
+          risk_tolerance?: string
+          auto_rebalancing?: boolean
+          rebalancing_frequency?: string
+          target_allocation?: Json
+          daily_trading_limit?: number
+          stop_loss_percentage?: number
+          take_profit_percentage?: number
+          max_portfolio_exposure?: number
+          price_alerts_enabled?: boolean
+          portfolio_alerts_enabled?: boolean
+          email_notifications?: boolean
+          push_notifications?: boolean
+          alert_thresholds?: Json
+          theme_preference?: string
+          chart_type?: string
+          default_time_range?: string
+          show_portfolio_value?: boolean
+          show_profit_loss?: boolean
+          paper_trading_mode?: boolean
+          api_trading_enabled?: boolean
+          two_factor_required?: boolean
+          session_timeout_minutes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
