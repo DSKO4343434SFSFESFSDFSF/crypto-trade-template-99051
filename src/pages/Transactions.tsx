@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownLeft, Calendar, Filter, FileText, Coins } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowUpRight, ArrowDownLeft, Calendar, Filter, FileText, Coins, Search, Grid3x3, TrendingUp } from "lucide-react";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import { toast } from "sonner";
@@ -22,17 +24,32 @@ interface Transaction {
 
 const Transactions = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<{ id: string } | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [userName, setUserName] = useState<string>("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'deposits' | 'trades'>('all');
 
   useEffect(() => {
+    // Check authentication and fetch user profile
+    const fetchUserProfile = async (userId: string) => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", userId)
+        .single();
+      
+      if (profile && profile.first_name && profile.last_name) {
+        setUserName(`${profile.first_name} ${profile.last_name}`);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUserProfile(session.user.id);
       }
     });
 
@@ -41,6 +58,7 @@ const Transactions = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUserProfile(session.user.id);
       }
     });
 
@@ -156,8 +174,102 @@ const Transactions = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <p className="text-muted-foreground">Loading transactions...</p>
+      <div className="min-h-screen bg-[#0A0A0A] flex">
+        {/* Sidebar */}
+        <Sidebar className="w-64 fixed left-0 top-0 bottom-0 z-40" />
+        
+        {/* Main Content Area */}
+        <div className="flex-1 ml-64">
+          {/* Top Navigation - Skeleton */}
+          <nav className="border-b border-white/5 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
+            <div className="max-w-[1800px] mx-auto px-8 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">N</span>
+                  </div>
+                  <h1 className="text-xl font-bold text-white">Nexbit</h1>
+                </div>
+                
+                {/* Search Bar */}
+                <div className="flex-1 max-w-xl mx-8">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input 
+                      type="text" 
+                      placeholder="Search for assets, markets & more" 
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-20 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-white/10 rounded text-xs text-muted-foreground">
+                      Ctrl K
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Transfer
+                  </Button>
+                  <Grid3x3 className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-foreground" />
+                  {user && <NotificationBell userId={user.id} />}
+                  <div className="flex items-center gap-3 ml-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                      <span className="text-sm font-medium text-white">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </nav>
+
+          {/* Main Content - Skeleton */}
+          <main className="max-w-[1800px] mx-auto px-8 py-8">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2">Transaction History</h1>
+              <p className="text-gray-400">View all your money transfers, purchases, and trading activity</p>
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-4 mb-6">
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-20" />
+            </div>
+
+            {/* Transactions List - Skeleton */}
+            <div className="bg-[#1A1A1A] border border-white/10 rounded-lg overflow-hidden">
+              <div className="divide-y divide-white/10">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="w-10 h-10 rounded-full" />
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-3 w-32" />
+                            <Skeleton className="h-4 w-16" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Skeleton className="h-4 w-24 mb-2" />
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </main>
+
+          {/* Footer */}
+          <Footer />
+        </div>
       </div>
     );
   }
@@ -177,7 +289,36 @@ const Transactions = () => {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
                   <span className="text-white font-bold text-sm">N</span>
                 </div>
-                <h1 className="text-xl font-bold text-white">Transactions</h1>
+                <h1 className="text-xl font-bold text-white">Nexbit</h1>
+              </div>
+              
+              {/* Search Bar */}
+              <div className="flex-1 max-w-xl mx-8">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input 
+                    type="text" 
+                    placeholder="Search for assets, markets & more" 
+                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-20 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-white/10 rounded text-xs text-muted-foreground">
+                    Ctrl K
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Transfer
+                </Button>
+                <Grid3x3 className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-foreground" />
+                {user && <NotificationBell userId={user.id} />}
+                <div className="flex items-center gap-3 ml-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                    <span className="text-sm font-medium text-white">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

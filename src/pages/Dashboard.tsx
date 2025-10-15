@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Bell, ChevronDown, Search, Grid3x3, TrendingUp, Zap, Heart } from "lucide-react";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { PromoBanner } from "@/components/dashboard/PromoBanner";
@@ -9,7 +10,8 @@ import { WatchlistCard } from "@/components/dashboard/WatchlistCard";
 import { BuyCoinModal } from "@/components/dashboard/BuyCoinModal";
 import { SellCoinModal } from "@/components/dashboard/SellCoinModal";
 import { SwapCoinModal } from "@/components/dashboard/SwapCoinModal";
-import { fetchTopCoins, CoinData } from "@/services/coingecko";
+import { CoinData } from "@/services/coingecko";
+import { useCoinData } from "@/contexts/CoinDataContext";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
@@ -23,10 +25,10 @@ import {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { coins, loading: coinsLoading, refreshing: coinsRefreshing } = useCoinData();
   const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState<string>("");
-  const [coins, setCoins] = useState<CoinData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"buy" | "sell" | "convert">("buy");
   const [portfolioValue, setPortfolioValue] = useState(0);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
@@ -71,50 +73,43 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+    const loadPortfolioData = async () => {
+      if (!user || coins.length === 0) return;
+      
+      setPortfolioLoading(true);
       try {
-        const coinsData = await fetchTopCoins();
-        setCoins(coinsData);
-        
         // Fetch portfolio value if user is authenticated
-        if (user) {
-          const { data: portfolioData } = await supabase
-            .from('user_portfolio_summary')
-            .select('cryptocurrency_id, symbol, total_amount')
-            .eq('user_id', user.id);
+        const { data: portfolioData } = await supabase
+          .from('user_portfolio_summary')
+          .select('cryptocurrency_id, symbol, total_amount')
+          .eq('user_id', user.id);
+        
+        if (portfolioData && portfolioData.length > 0) {
+          // Create a map of real-time prices by symbol
+          const coinPriceMap = new Map<string, number>();
+          coins.forEach(coin => {
+            coinPriceMap.set(coin.symbol.toUpperCase(), coin.current_price);
+          });
           
-          if (portfolioData && portfolioData.length > 0) {
-            // Create a map of real-time prices by symbol
-            const coinPriceMap = new Map<string, number>();
-            coinsData.forEach(coin => {
-              coinPriceMap.set(coin.symbol.toUpperCase(), coin.current_price);
-            });
-            
-            // Calculate total portfolio value with real-time prices
-            const totalValue = portfolioData.reduce((sum, holding) => {
-              const realTimePrice = coinPriceMap.get(holding.symbol.toUpperCase()) || 0;
-              return sum + (holding.total_amount * realTimePrice);
-            }, 0);
-            
-            setPortfolioValue(totalValue);
-          } else {
-            setPortfolioValue(0);
-          }
+          // Calculate total portfolio value with real-time prices
+          const totalValue = portfolioData.reduce((sum, holding) => {
+            const realTimePrice = coinPriceMap.get(holding.symbol.toUpperCase()) || 0;
+            return sum + (holding.total_amount * realTimePrice);
+          }, 0);
+          
+          setPortfolioValue(totalValue);
+        } else {
+          setPortfolioValue(0);
         }
       } catch (error) {
-        toast.error("Failed to load market data");
-        console.error(error);
+        console.error('Error loading portfolio data:', error);
       } finally {
-        setLoading(false);
+        setPortfolioLoading(false);
       }
     };
 
-    loadData();
-    const interval = setInterval(loadData, 60000); // Refresh every minute
-
-    return () => clearInterval(interval);
-  }, [user, portfolioVersion]);
+    loadPortfolioData();
+  }, [user, coins, portfolioVersion]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -136,7 +131,10 @@ const Dashboard = () => {
     return data;
   };
 
-  if (loading) {
+  const loading = coinsLoading || portfolioLoading;
+  const refreshing = coinsRefreshing;
+
+  if (coinsLoading && coins.length === 0) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <p className="text-muted-foreground">Loading dashboard...</p>
@@ -206,7 +204,13 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-gray-400 mb-2">Portfolio value</p>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-4xl font-bold text-white">${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+                {portfolioLoading ? (
+                  <Skeleton className="h-12 w-48" />
+                ) : (
+                  <h2 className={`text-4xl font-bold text-white transition-opacity ${refreshing ? 'opacity-75' : ''}`}>
+                    ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </h2>
+                )}
                 <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/5 text-white">
                   <span className="text-sm">↓</span>
                   <span className="ml-1">Deposit</span>
@@ -218,18 +222,39 @@ const Dashboard = () => {
             <div>
               <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Watchlist</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {coins.slice(0, 9).map((coin) => (
-                  <WatchlistCard
-                    key={coin.id}
-                    name={coin.name}
-                    symbol={coin.symbol.toUpperCase()}
-                    icon={coin.image}
-                    price={`$${coin.current_price.toLocaleString()}`}
-                    change={`${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%`}
-                    isPositive={coin.price_change_percentage_24h > 0}
-                    chartData={generateSparklineData(coin.price_change_percentage_24h)}
-                  />
-                ))}
+                {coinsLoading && coins.length === 0 ? (
+                  // Skeleton loading for watchlist cards
+                  Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} className="bg-[#1A1A1A] border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="w-6 h-6 rounded-full" />
+                          <div>
+                            <Skeleton className="h-3 w-12 mb-1" />
+                            <Skeleton className="h-2 w-8" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-8 w-full" />
+                    </div>
+                  ))
+                ) : (
+                  coins.slice(0, 9).map((coin) => (
+                    <div key={coin.id} className={`transition-opacity ${refreshing ? 'opacity-75' : ''}`}>
+                      <WatchlistCard
+                        name={coin.name}
+                        symbol={coin.symbol.toUpperCase()}
+                        icon={coin.image}
+                        price={`$${coin.current_price.toLocaleString()}`}
+                        change={`${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%`}
+                        isPositive={coin.price_change_percentage_24h > 0}
+                        chartData={generateSparklineData(coin.price_change_percentage_24h)}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

@@ -6,7 +6,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowDownUp, Loader2 } from "lucide-react";
-import { fetchTopCoins, CoinData } from "@/services/coingecko";
+import { CoinData } from "@/services/coingecko";
+import { useCoinData } from "@/contexts/CoinDataContext";
 import {
   Select,
   SelectContent,
@@ -31,22 +32,16 @@ interface SwapCoinModalProps {
 const SWAP_FEE_PERCENTAGE = 1.5; // 1.5% fee
 
 export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapCoinModalProps) => {
+  const { coins } = useCoinData();
   const [amount, setAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [coins, setCoins] = useState<CoinData[]>([]);
   const [fromCoin, setFromCoin] = useState<string>(initialCoin?.id || "");
   const [toCoin, setToCoin] = useState<string>("");
   const [fromBalance, setFromBalance] = useState<number>(0);
   const [fromCoinData, setFromCoinData] = useState<CoinData | null>(null);
   const [toCoinData, setToCoinData] = useState<CoinData | null>(null);
 
-  useEffect(() => {
-    const loadCoins = async () => {
-      const coinsData = await fetchTopCoins();
-      setCoins(coinsData);
-    };
-    loadCoins();
-  }, []);
+  // Remove the loadCoins useEffect since we're using shared context
 
   useEffect(() => {
     if (fromCoin) {

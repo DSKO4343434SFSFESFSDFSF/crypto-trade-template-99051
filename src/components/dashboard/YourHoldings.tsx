@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchTopCoins, CoinData } from "@/services/coingecko";
+import { CoinData } from "@/services/coingecko";
+import { useCoinData } from "@/contexts/CoinDataContext";
 
 interface Holding {
   cryptocurrency_id: string;
@@ -22,6 +24,7 @@ interface YourHoldingsProps {
 }
 
 export const YourHoldings = ({ userId }: YourHoldingsProps) => {
+  const { coins, refreshing: coinsRefreshing } = useCoinData();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalValue, setTotalValue] = useState(0);
@@ -30,6 +33,8 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
     if (!userId) return;
 
     const loadHoldings = async () => {
+      if (coins.length === 0) return;
+      
       setLoading(true);
       try {
         // Fetch user holdings from database
@@ -40,8 +45,7 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
 
         if (error) throw error;
 
-        // Fetch real-time prices from CoinLore API
-        const coins = await fetchTopCoins(100);
+        // Create a map of real-time prices from shared coin data
         const coinPriceMap = new Map<string, CoinData>();
         
         // Map coins by SYMBOL (not ID) for quick lookup - this matches database symbols with API data
@@ -84,11 +88,7 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
     };
 
     loadHoldings();
-
-    // Refresh holdings every minute to keep prices up-to-date
-    const interval = setInterval(loadHoldings, 60000);
-    return () => clearInterval(interval);
-  }, [userId]);
+  }, [userId, coins]);
 
   return (
     <Card className="glass border-border p-6">
@@ -113,9 +113,24 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
 
       <div className="space-y-3">
         {loading ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Loading holdings...
-          </div>
+          // Skeleton loading state
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-4 rounded-xl border border-border bg-background/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 flex-1">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Skeleton className="h-4 w-20 mb-2" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              </div>
+            </div>
+          ))
         ) : holdings.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Wallet className="w-12 h-12 mx-auto mb-2 opacity-20" />
@@ -129,7 +144,10 @@ export const YourHoldings = ({ userId }: YourHoldingsProps) => {
             return (
               <div
                 key={holding.cryptocurrency_id}
-                className="group relative p-4 rounded-xl border border-border bg-background/50 hover:bg-background/80 hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden"
+                className={cn(
+                  "group relative p-4 rounded-xl border border-border bg-background/50 hover:bg-background/80 hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden",
+                  coinsRefreshing && "opacity-75"
+                )}
               >
                 {/* Gradient background on hover */}
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchTopCoins, CoinData } from "@/services/coingecko";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CoinData } from "@/services/coingecko";
+import { useCoinData } from "@/contexts/CoinDataContext";
 import { CoinDetailModal } from "@/components/dashboard/CoinDetailModal";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { YourHoldings } from "@/components/dashboard/YourHoldings";
@@ -19,11 +21,11 @@ interface UserHolding {
 
 const Cryptocurrencies = () => {
   const navigate = useNavigate();
+  const { coins, loading: coinsLoading, refreshing: coinsRefreshing } = useCoinData();
   const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState<string>("");
-  const [coins, setCoins] = useState<CoinData[]>([]);
   const [holdings, setHoldings] = useState<Map<string, UserHolding>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const [holdingsLoading, setHoldingsLoading] = useState(true);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
   const [portfolioVersion, setPortfolioVersion] = useState(0);
 
@@ -102,52 +104,38 @@ const Cryptocurrencies = () => {
     loadUserHoldings();
   }, [user, portfolioVersion, coins]);
 
-  useEffect(() => {
-    const loadCoins = async () => {
-      setLoading(true);
-      try {
-        const coinsData = await fetchTopCoins();
-        
-        // Define priority coins order
-        const priorityOrder = ['bitcoin', 'ethereum', 'ripple', 'solana', 'tether', 'litecoin', 'binancecoin'];
-        
-        // Sort coins: priority coins first, then by market cap rank
-        const sortedCoins = coinsData.sort((a, b) => {
-          const aIndex = priorityOrder.indexOf(a.id);
-          const bIndex = priorityOrder.indexOf(b.id);
-          
-          // If both are priority coins, maintain the priority order
-          if (aIndex !== -1 && bIndex !== -1) {
-            return aIndex - bIndex;
-          }
-          // If only a is priority
-          if (aIndex !== -1) return -1;
-          // If only b is priority
-          if (bIndex !== -1) return 1;
-          // Neither are priority, sort by rank
-          return a.market_cap_rank - b.market_cap_rank;
-        });
-        
-        setCoins(sortedCoins);
-      } catch (error) {
-        toast.error("Failed to load coins");
-        console.error(error);
-      } finally {
-        setLoading(false);
+  // Sort coins with priority order when coins data changes
+  const sortedCoins = React.useMemo(() => {
+    if (coins.length === 0) return [];
+    
+    const priorityOrder = ['bitcoin', 'ethereum', 'ripple', 'solana', 'tether', 'litecoin', 'binancecoin'];
+    
+    return [...coins].sort((a, b) => {
+      const aIndex = priorityOrder.indexOf(a.id);
+      const bIndex = priorityOrder.indexOf(b.id);
+      
+      // If both are priority coins, maintain the priority order
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
       }
-    };
-
-    loadCoins();
-    const interval = setInterval(loadCoins, 60000); // Refresh every minute
-    return () => clearInterval(interval);
-  }, []);
+      // If only a is priority
+      if (aIndex !== -1) return -1;
+      // If only b is priority
+      if (bIndex !== -1) return 1;
+      // Neither are priority, sort by rank
+      return a.market_cap_rank - b.market_cap_rank;
+    });
+  }, [coins]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
   };
 
-  if (loading) {
+  const loading = coinsLoading || holdingsLoading;
+  const refreshing = coinsRefreshing;
+
+  if (coinsLoading && coins.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading coins...</p>
@@ -238,7 +226,7 @@ const Cryptocurrencies = () => {
 
           {/* Table Rows */}
           <div className="divide-y divide-border">
-            {coins.map((coin, index) => {
+            {sortedCoins.map((coin, index) => {
               const holding = holdings.get(coin.id);
               const isPositive24h = coin.price_change_percentage_24h > 0;
               const isPositive1h = (coin.price_change_percentage_1h || 0) > 0;
