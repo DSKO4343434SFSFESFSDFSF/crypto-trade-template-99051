@@ -32,12 +32,18 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_portfolio_summary")
         .select("total_amount")
         .eq("user_id", user.id)
         .eq("cryptocurrency_id", coin.id)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error loading balance:", error);
+        setAvailableBalance(0);
+        return;
+      }
 
       setAvailableBalance(data?.total_amount || 0);
     };
