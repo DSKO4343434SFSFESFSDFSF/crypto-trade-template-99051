@@ -43,12 +43,12 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
           return;
         }
 
-        // Query directly by symbol from user_portfolio_summary - this matches the approach in YourHoldings and SwapCoinModal
+        // Use the same approach as Cryptocurrencies page - query by cryptocurrency_id using coin.id
         const { data, error } = await supabase
           .from("user_portfolio_summary")
           .select("total_amount, cryptocurrency_id")
           .eq("user_id", user.id)
-          .eq("symbol", coin.symbol.toLowerCase())
+          .eq("cryptocurrency_id", coin.id)
           .maybeSingle();
         
         if (data?.cryptocurrency_id) {
