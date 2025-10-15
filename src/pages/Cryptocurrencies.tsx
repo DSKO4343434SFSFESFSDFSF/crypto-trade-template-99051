@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchTopCoins, CoinData } from "@/services/coingecko";
 import { CoinDetailModal } from "@/components/dashboard/CoinDetailModal";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { YourHoldings } from "@/components/dashboard/YourHoldings";
 import { toast } from "sonner";
-import { Heart, TrendingUp, TrendingDown } from "lucide-react";
+import { Heart, TrendingUp, TrendingDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Sidebar from "@/components/Sidebar";
 
@@ -155,38 +156,50 @@ const Cryptocurrencies = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-[#0A0A0A] flex">
       {/* Sidebar */}
       <Sidebar className="w-64 fixed left-0 top-0 bottom-0 z-40" />
       
       {/* Main Content Area */}
       <div className="flex-1 ml-64">
-      {/* Top Navigation */}
-      <nav className="border-b border-border">
-        <div className="container px-6 py-4">
+      {/* Top Navigation - Modern Header */}
+      <nav className="border-b border-white/5 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-[1800px] mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold text-primary">Nexbit</h1>
-              <div className="flex gap-6">
-                <button onClick={() => navigate("/dashboard")} className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                  Dashboard
-                </button>
-                <button className="text-sm font-medium text-foreground">Cryptocurrencies</button>
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Exchange</button>
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Community</button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">N</span>
+              </div>
+              <h1 className="text-xl font-bold text-white">Nexbit</h1>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="flex-1 max-w-xl mx-8">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input 
+                  type="text" 
+                  placeholder="Search cryptocurrencies..." 
+                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-20 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-white/10 rounded text-xs text-muted-foreground">
+                  Ctrl K
+                </div>
               </div>
             </div>
+
             <div className="flex items-center gap-4">
+              <button 
+                onClick={() => navigate("/dashboard")}
+                className="text-sm font-medium text-green-400 hover:text-green-300 transition-colors flex items-center gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Dashboard
+              </button>
               {user && <NotificationBell userId={user.id} />}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-medium">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{userName || user?.email?.split('@')[0]}</p>
-                  <button onClick={handleSignOut} className="text-xs text-muted-foreground hover:text-foreground">
-                    Sign out
-                  </button>
+              <div className="flex items-center gap-3 ml-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                  <span className="text-sm font-medium text-white">{userName ? userName[0].toUpperCase() : user?.email?.[0].toUpperCase()}</span>
                 </div>
               </div>
             </div>
@@ -195,11 +208,18 @@ const Cryptocurrencies = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="container px-6 py-8">
+      <main className="max-w-[1800px] mx-auto px-8 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Cryptocurrencies</h2>
           <p className="text-muted-foreground">Track real-time prices, market cap, and 24h changes for top cryptocurrencies.</p>
         </div>
+
+        {/* Your Holdings Section */}
+        {user && (
+          <div className="mb-8">
+            <YourHoldings userId={user.id} />
+          </div>
+        )}
 
         {/* Table Header */}
         <div className="bg-background/50 border border-border rounded-lg overflow-hidden">
