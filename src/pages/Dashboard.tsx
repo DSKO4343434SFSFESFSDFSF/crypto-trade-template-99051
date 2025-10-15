@@ -231,24 +231,28 @@ const Dashboard = () => {
             </div>
 
             {/* Watchlist */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Watchlist</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="bg-[#1A1A1A] border border-white/10 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/10">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">WATCHLIST</h3>
+              </div>
+              <div className="divide-y divide-white/10">
                 {refreshing ? (
                   // Show skeleton cards during refresh
                   Array.from({ length: 9 }).map((_, index) => (
-                    <div key={index} className="bg-[#1A1A1A] border border-white/10 rounded-lg p-4">
-                      <div className="flex items-center gap-3 mb-3">
+                    <div key={index} className="flex items-center justify-between py-3 px-4">
+                      <div className="flex items-center gap-3 flex-1">
                         <Skeleton className="w-8 h-8 rounded-full bg-white/10" />
-                        <div className="flex-1">
+                        <div className="flex flex-col">
                           <Skeleton className="h-4 w-20 mb-1 bg-white/10" />
                           <Skeleton className="h-3 w-12 bg-white/10" />
                         </div>
                       </div>
-                      <Skeleton className="h-12 w-full mb-2 bg-white/10" />
-                      <div className="flex items-center justify-between">
-                        <Skeleton className="h-4 w-16 bg-white/10" />
-                        <Skeleton className="h-4 w-12 bg-white/10" />
+                      <div className="flex-1 flex justify-center">
+                        <Skeleton className="h-6 w-20 bg-white/10" />
+                      </div>
+                      <div className="flex flex-col items-end flex-1">
+                        <Skeleton className="h-4 w-16 mb-1 bg-white/10" />
+                        <Skeleton className="h-3 w-12 bg-white/10" />
                       </div>
                     </div>
                   ))
