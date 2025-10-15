@@ -31,6 +31,8 @@ const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"buy" | "sell" | "convert">("buy");
   const [portfolioValue, setPortfolioValue] = useState(0);
+  const [prevPortfolioValue, setPrevPortfolioValue] = useState(0);
+  const [isPortfolioAnimating, setIsPortfolioAnimating] = useState(false);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
@@ -105,6 +107,12 @@ const Dashboard = () => {
               return sum + (holding.total_amount * realTimePrice);
             }, 0);
             
+            // Trigger animation if value changed
+            if (totalValue !== portfolioValue) {
+              setPrevPortfolioValue(portfolioValue);
+              setIsPortfolioAnimating(true);
+              setTimeout(() => setIsPortfolioAnimating(false), 600);
+            }
             setPortfolioValue(totalValue);
           } else {
             setPortfolioValue(0);
@@ -221,7 +229,35 @@ const Dashboard = () => {
                 {refreshing ? (
                   <Skeleton className="h-12 w-64 bg-white/10" />
                 ) : (
-                  <h2 className="text-4xl font-bold text-white">${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className={
+                      `text-4xl font-bold transition-all duration-500 ease-out ${
+                        portfolioValue > prevPortfolioValue 
+                          ? 'text-green-500' 
+                          : portfolioValue < prevPortfolioValue 
+                          ? 'text-red-500' 
+                          : 'text-white'
+                      } ${
+                        isPortfolioAnimating ? 'scale-105' : 'scale-100'
+                      }`
+                    }>
+                      ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h2>
+                    {portfolioValue !== prevPortfolioValue && prevPortfolioValue > 0 && (
+                      <span className={
+                        `text-sm font-medium transition-all duration-500 ${
+                          portfolioValue > prevPortfolioValue 
+                            ? 'text-green-500' 
+                            : 'text-red-500'
+                        } ${
+                          isPortfolioAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+                        }`
+                      }>
+                        {portfolioValue > prevPortfolioValue ? '↗' : '↘'}
+                        {Math.abs(((portfolioValue - prevPortfolioValue) / prevPortfolioValue) * 100).toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
                 )}
                 <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/5 text-white">
                   <span className="text-sm">↓</span>
