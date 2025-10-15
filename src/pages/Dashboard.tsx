@@ -206,7 +206,7 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-gray-400 mb-2">Portfolio value</p>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-4xl font-bold text-white">${portfolioValue.toFixed(2)}</h2>
+                <h2 className="text-4xl font-bold text-white">${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
                 <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/5 text-white">
                   <span className="text-sm">↓</span>
                   <span className="ml-1">Deposit</span>
