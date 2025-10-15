@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Cryptocurrencies from "./pages/Cryptocurrencies";
 import Transactions from "./pages/Transactions";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/cryptocurrencies" element={<Cryptocurrencies />} />
         <Route path="/transactions" element={<Transactions />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
         </BrowserRouter>
       </div>
