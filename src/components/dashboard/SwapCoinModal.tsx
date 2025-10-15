@@ -37,6 +37,7 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
   const [fromCoin, setFromCoin] = useState<string>(initialCoin?.id || "");
   const [toCoin, setToCoin] = useState<string>("");
   const [fromBalance, setFromBalance] = useState<number>(0);
+  const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
   const [fromCoinData, setFromCoinData] = useState<CoinData | null>(null);
   const [toCoinData, setToCoinData] = useState<CoinData | null>(null);
   const [symbolToIdMap, setSymbolToIdMap] = useState<Map<string, string>>(new Map());
@@ -77,34 +78,62 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
   }, [toCoin, coins]);
 
   useEffect(() => {
-    if (!isOpen || !fromCoin || !fromCoinData) return;
+    if (!isOpen || !fromCoin || !fromCoinData) {
+      setFromBalance(0);
+      setBalanceLoading(false);
+      return;
+    }
 
     const loadBalance = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      setBalanceLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setFromBalance(0);
+          return;
+        }
 
-      // Map the coin symbol to database cryptocurrency_id
-      const dbCoinId = symbolToIdMap.get(fromCoinData.symbol.toUpperCase());
-      if (!dbCoinId) {
-        console.error("Could not find database ID for symbol:", fromCoinData.symbol);
-        setFromBalance(0);
-        return;
+        // First try to get the database ID from the symbol mapping
+        let dbCoinId = symbolToIdMap.get(fromCoinData.symbol.toUpperCase());
+        
+        // If not found in mapping, fetch directly from database
+        if (!dbCoinId) {
+          const { data: dbCoins } = await supabase
+            .from('cryptocurrencies')
+            .select('id, symbol')
+            .eq('symbol', fromCoinData.symbol.toLowerCase())
+            .maybeSingle();
+          
+          if (dbCoins) {
+            dbCoinId = dbCoins.id;
+            // Update the mapping for future use
+            setSymbolToIdMap(prev => new Map(prev.set(fromCoinData.symbol.toUpperCase(), dbCoins.id)));
+          }
+        }
+
+        if (!dbCoinId) {
+          console.error("Could not find database ID for symbol:", fromCoinData.symbol);
+          setFromBalance(0);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("user_portfolio_summary")
+          .select("total_amount")
+          .eq("user_id", user.id)
+          .eq("cryptocurrency_id", dbCoinId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error loading balance:", error);
+          setFromBalance(0);
+          return;
+        }
+
+        setFromBalance(data?.total_amount || 0);
+      } finally {
+        setBalanceLoading(false);
       }
-
-      const { data, error } = await supabase
-        .from("user_portfolio_summary")
-        .select("total_amount")
-        .eq("user_id", user.id)
-        .eq("cryptocurrency_id", dbCoinId)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error loading balance:", error);
-        setFromBalance(0);
-        return;
-      }
-
-      setFromBalance(data?.total_amount || 0);
     };
 
     loadBalance();
@@ -219,6 +248,8 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
     setFromCoin(toCoin);
     setToCoin(temp);
     setAmount("");
+    // Reset balance to trigger reload
+    setFromBalance(0);
   };
 
   return (
@@ -255,7 +286,14 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
             </Select>
             {fromCoin && (
               <p className="text-xs text-muted-foreground">
-                Available: {fromBalance.toFixed(6)} {fromCoinData?.symbol.toUpperCase()}
+                Available: {balanceLoading ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  `${fromBalance.toFixed(6)} ${fromCoinData?.symbol.toUpperCase()}`
+                )}
               </p>
             )}
           </div>

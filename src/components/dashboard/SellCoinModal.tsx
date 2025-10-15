@@ -24,44 +24,57 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
   const [amount, setAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [availableBalance, setAvailableBalance] = useState<number>(0);
+  const [balanceLoading, setBalanceLoading] = useState<boolean>(false);
   const [dbCoinId, setDbCoinId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setAvailableBalance(0);
+      setBalanceLoading(false);
+      return;
+    }
 
     const loadBalance = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      setBalanceLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setAvailableBalance(0);
+          return;
+        }
 
-      // Map the coin symbol to database cryptocurrency_id
-      const { data: dbCoins } = await supabase
-        .from('cryptocurrencies')
-        .select('id, symbol')
-        .eq('symbol', coin.symbol)
-        .maybeSingle();
-      
-      if (!dbCoins) {
-        console.error("Could not find database ID for symbol:", coin.symbol);
-        setAvailableBalance(0);
-        return;
+        // Map the coin symbol to database cryptocurrency_id
+        const { data: dbCoins } = await supabase
+          .from('cryptocurrencies')
+          .select('id, symbol')
+          .eq('symbol', coin.symbol.toLowerCase())
+          .maybeSingle();
+        
+        if (!dbCoins) {
+          console.error("Could not find database ID for symbol:", coin.symbol);
+          setAvailableBalance(0);
+          return;
+        }
+        
+        setDbCoinId(dbCoins.id);
+
+        const { data, error } = await supabase
+          .from("user_portfolio_summary")
+          .select("total_amount")
+          .eq("user_id", user.id)
+          .eq("cryptocurrency_id", dbCoins.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error loading balance:", error);
+          setAvailableBalance(0);
+          return;
+        }
+
+        setAvailableBalance(data?.total_amount || 0);
+      } finally {
+        setBalanceLoading(false);
       }
-      
-      setDbCoinId(dbCoins.id);
-
-      const { data, error } = await supabase
-        .from("user_portfolio_summary")
-        .select("total_amount")
-        .eq("user_id", user.id)
-        .eq("cryptocurrency_id", dbCoins.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error loading balance:", error);
-        setAvailableBalance(0);
-        return;
-      }
-
-      setAvailableBalance(data?.total_amount || 0);
     };
 
     loadBalance();
@@ -149,7 +162,14 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Available Balance</span>
               <span className="font-semibold text-primary">
-                {availableBalance.toFixed(6)} {coin.symbol.toUpperCase()}
+                {balanceLoading ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  `${availableBalance.toFixed(6)} ${coin.symbol.toUpperCase()}`
+                )}
               </span>
             </div>
           </div>
