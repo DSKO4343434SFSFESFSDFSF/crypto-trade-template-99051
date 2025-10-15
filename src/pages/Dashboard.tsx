@@ -6,10 +6,20 @@ import { Bell, ChevronDown, Search, Grid3x3, TrendingUp, Zap, Heart } from "luci
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { PromoBanner } from "@/components/dashboard/PromoBanner";
 import { WatchlistCard } from "@/components/dashboard/WatchlistCard";
+import { BuyCoinModal } from "@/components/dashboard/BuyCoinModal";
+import { SellCoinModal } from "@/components/dashboard/SellCoinModal";
+import { SwapCoinModal } from "@/components/dashboard/SwapCoinModal";
 import { fetchTopCoins, CoinData } from "@/services/coingecko";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -19,6 +29,11 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"buy" | "sell" | "convert">("buy");
   const [portfolioValue, setPortfolioValue] = useState(0);
+  const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
+  const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+  const [portfolioVersion, setPortfolioVersion] = useState(0);
 
   useEffect(() => {
     // Check authentication and fetch user profile
@@ -66,11 +81,22 @@ const Dashboard = () => {
         if (user) {
           const { data: portfolioData } = await supabase
             .from('user_portfolio_summary')
-            .select('current_value')
+            .select('cryptocurrency_id, symbol, total_amount')
             .eq('user_id', user.id);
           
           if (portfolioData && portfolioData.length > 0) {
-            const totalValue = portfolioData.reduce((sum, item) => sum + (Number(item.current_value) || 0), 0);
+            // Create a map of real-time prices by symbol
+            const coinPriceMap = new Map<string, number>();
+            coinsData.forEach(coin => {
+              coinPriceMap.set(coin.symbol.toUpperCase(), coin.current_price);
+            });
+            
+            // Calculate total portfolio value with real-time prices
+            const totalValue = portfolioData.reduce((sum, holding) => {
+              const realTimePrice = coinPriceMap.get(holding.symbol.toUpperCase()) || 0;
+              return sum + (holding.total_amount * realTimePrice);
+            }, 0);
+            
             setPortfolioValue(totalValue);
           } else {
             setPortfolioValue(0);
@@ -88,7 +114,7 @@ const Dashboard = () => {
     const interval = setInterval(loadData, 60000); // Refresh every minute
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, portfolioVersion]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -249,54 +275,82 @@ const Dashboard = () => {
 
               {/* Coin Selector */}
               <div className="mb-6">
-                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-green-500/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-xs">₿</span>
+                <p className="text-xs text-gray-400 mb-2">Select cryptocurrency</p>
+                <Select 
+                  value={selectedCoin?.id || ""} 
+                  onValueChange={(value) => {
+                    const coin = coins.find(c => c.id === value);
+                    setSelectedCoin(coin || null);
+                  }}
+                >
+                  <SelectTrigger className="bg-[#0A0A0A] border-white/10 hover:border-green-500/50 text-white">
+                    <SelectValue placeholder="Choose a coin" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1A1A1A] border-white/10">
+                    {coins.slice(0, 20).map((coin) => (
+                      <SelectItem key={coin.id} value={coin.id} className="text-white hover:bg-white/5">
+                        <div className="flex items-center gap-2">
+                          <img src={coin.image} alt={coin.name} className="w-5 h-5" />
+                          <span>{coin.name}</span>
+                          <span className="text-gray-400 text-xs">({coin.symbol.toUpperCase()})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedCoin && (
+                <>
+                  {/* Selected Coin Info */}
+                  <div className="mb-6 p-4 bg-[#0A0A0A] border border-white/10 rounded-lg">
+                    <div className="flex items-center gap-3 mb-3">
+                      <img src={selectedCoin.image} alt={selectedCoin.name} className="w-10 h-10" />
+                      <div>
+                        <p className="text-sm font-medium text-white">{selectedCoin.name}</p>
+                        <p className="text-xs text-gray-400">{selectedCoin.symbol.toUpperCase()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-white">Bitcoin</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">Current Price</span>
+                      <span className="text-sm font-semibold text-white">
+                        ${selectedCoin.current_price.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-gray-400">24h Change</span>
+                      <span className={`text-sm font-semibold ${
+                        selectedCoin.price_change_percentage_24h > 0 ? "text-green-500" : "text-red-500"
+                      }`}>
+                        {selectedCoin.price_change_percentage_24h > 0 ? "+" : ""}
+                        {selectedCoin.price_change_percentage_24h.toFixed(2)}%
+                      </span>
                     </div>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
 
-              {/* Amount Display */}
-              <div className="mb-8">
-                <div className="text-right">
-                  <div className="text-7xl font-light text-white mb-2">0</div>
-                  <div className="text-sm text-gray-400 flex items-center justify-end gap-1">
-                    <span>BTC</span>
-                    <ChevronDown className="w-3 h-3" />
-                  </div>
-                </div>
-              </div>
+                  {/* Action Button */}
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium"
+                    onClick={() => {
+                      if (activeTab === "buy") {
+                        setIsBuyModalOpen(true);
+                      } else if (activeTab === "sell") {
+                        setIsSellModalOpen(true);
+                      } else {
+                        setIsSwapModalOpen(true);
+                      }
+                    }}
+                  >
+                    {activeTab === "buy" ? "Buy Now" : activeTab === "sell" ? "Sell Now" : "Convert Now"}
+                  </Button>
+                </>
+              )}
 
-              {/* Pay with */}
-              <div className="mb-4">
-                <p className="text-xs text-gray-400 mb-2">Pay with</p>
-                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-green-500/50 transition-colors">
-                  <span className="text-sm text-gray-300">Select a payment method</span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+              {!selectedCoin && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-400">Select a cryptocurrency to get started</p>
                 </div>
-              </div>
-
-              {/* Buy now */}
-              <div className="mb-6">
-                <p className="text-xs text-gray-400 mb-2">Buy now</p>
-                <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-white/10 rounded-lg cursor-pointer hover:border-green-500/50 transition-colors">
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-
-              {/* Review Button */}
-              <Button 
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium"
-                onClick={() => navigate("/cryptocurrencies")}
-              >
-                Review
-              </Button>
+              )}
             </div>
           </div>
         </div>
@@ -305,6 +359,30 @@ const Dashboard = () => {
       {/* Footer */}
       <Footer />
       </div>
+
+      {/* Trading Modals */}
+      {selectedCoin && (
+        <>
+          <BuyCoinModal
+            coin={selectedCoin}
+            isOpen={isBuyModalOpen}
+            onClose={() => setIsBuyModalOpen(false)}
+            onSuccess={() => setPortfolioVersion(v => v + 1)}
+          />
+          <SellCoinModal
+            coin={selectedCoin}
+            isOpen={isSellModalOpen}
+            onClose={() => setIsSellModalOpen(false)}
+            onSuccess={() => setPortfolioVersion(v => v + 1)}
+          />
+          <SwapCoinModal
+            initialCoin={selectedCoin}
+            isOpen={isSwapModalOpen}
+            onClose={() => setIsSwapModalOpen(false)}
+            onSuccess={() => setPortfolioVersion(v => v + 1)}
+          />
+        </>
+      )}
     </div>
   );
 };

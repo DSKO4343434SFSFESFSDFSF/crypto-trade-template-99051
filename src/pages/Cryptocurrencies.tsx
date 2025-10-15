@@ -11,6 +11,7 @@ import Sidebar from "@/components/Sidebar";
 
 interface UserHolding {
   cryptocurrency_id: string;
+  symbol: string;
   total_amount: number;
   current_value: number;
 }
@@ -67,14 +68,29 @@ const Cryptocurrencies = () => {
       try {
         const { data, error } = await supabase
           .from('user_portfolio_summary')
-          .select('cryptocurrency_id, total_amount, current_value')
+          .select('cryptocurrency_id, symbol, total_amount, current_value')
           .eq('user_id', user.id);
         
         if (error) throw error;
         
+        // Create a map of real-time prices by symbol from coins state
+        const coinPriceMap = new Map<string, number>();
+        coins.forEach(coin => {
+          coinPriceMap.set(coin.symbol.toUpperCase(), coin.current_price);
+        });
+        
         const holdingsMap = new Map<string, UserHolding>();
         data?.forEach(holding => {
-          holdingsMap.set(holding.cryptocurrency_id, holding);
+          // Calculate current value with real-time price
+          const realTimePrice = coinPriceMap.get(holding.symbol.toUpperCase());
+          const currentValue = realTimePrice 
+            ? holding.total_amount * realTimePrice 
+            : holding.current_value; // Fallback to DB value if price not found
+          
+          holdingsMap.set(holding.cryptocurrency_id, {
+            ...holding,
+            current_value: currentValue
+          });
         });
         setHoldings(holdingsMap);
       } catch (error) {
@@ -83,7 +99,7 @@ const Cryptocurrencies = () => {
     };
 
     loadUserHoldings();
-  }, [user, portfolioVersion]);
+  }, [user, portfolioVersion, coins]);
 
   useEffect(() => {
     const loadCoins = async () => {
