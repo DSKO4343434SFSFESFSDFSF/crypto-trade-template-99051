@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ShoppingCart, Loader2 } from "lucide-react";
@@ -23,6 +23,26 @@ interface BuyCoinModalProps {
 export const BuyCoinModal = ({ coin, isOpen, onClose, onSuccess }: BuyCoinModalProps) => {
   const [amount, setAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [dbCoinId, setDbCoinId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadDbCoinId = async () => {
+      // Map the coin symbol to database cryptocurrency_id
+      const { data: dbCoins } = await supabase
+        .from('cryptocurrencies')
+        .select('id')
+        .eq('symbol', coin.symbol)
+        .maybeSingle();
+      
+      if (dbCoins) {
+        setDbCoinId(dbCoins.id);
+      }
+    };
+
+    loadDbCoinId();
+  }, [isOpen, coin.symbol]);
 
   const handleBuy = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -39,6 +59,11 @@ export const BuyCoinModal = ({ coin, isOpen, onClose, onSuccess }: BuyCoinModalP
         return;
       }
 
+      if (!dbCoinId) {
+        toast.error("Could not find cryptocurrency in database");
+        return;
+      }
+
       const purchaseAmount = parseFloat(amount);
       const totalCost = purchaseAmount * coin.current_price;
 
@@ -47,7 +72,7 @@ export const BuyCoinModal = ({ coin, isOpen, onClose, onSuccess }: BuyCoinModalP
         .from("user_purchases")
         .insert({
           user_id: user.id,
-          cryptocurrency_id: coin.id,
+          cryptocurrency_id: dbCoinId,
           amount: purchaseAmount,
           purchase_price: coin.current_price,
           total_cost: totalCost,

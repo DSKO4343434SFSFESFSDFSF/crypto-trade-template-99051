@@ -39,11 +39,25 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
   const [fromBalance, setFromBalance] = useState<number>(0);
   const [fromCoinData, setFromCoinData] = useState<CoinData | null>(null);
   const [toCoinData, setToCoinData] = useState<CoinData | null>(null);
+  const [symbolToIdMap, setSymbolToIdMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     const loadCoins = async () => {
       const coinsData = await fetchTopCoins();
       setCoins(coinsData);
+      
+      // Load cryptocurrency mappings from database to map symbols to IDs
+      const { data: dbCoins } = await supabase
+        .from('cryptocurrencies')
+        .select('id, symbol');
+      
+      if (dbCoins) {
+        const mapping = new Map<string, string>();
+        dbCoins.forEach(coin => {
+          mapping.set(coin.symbol.toUpperCase(), coin.id);
+        });
+        setSymbolToIdMap(mapping);
+      }
     };
     loadCoins();
   }, []);
@@ -63,17 +77,25 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
   }, [toCoin, coins]);
 
   useEffect(() => {
-    if (!isOpen || !fromCoin) return;
+    if (!isOpen || !fromCoin || !fromCoinData) return;
 
     const loadBalance = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Map the coin symbol to database cryptocurrency_id
+      const dbCoinId = symbolToIdMap.get(fromCoinData.symbol.toUpperCase());
+      if (!dbCoinId) {
+        console.error("Could not find database ID for symbol:", fromCoinData.symbol);
+        setFromBalance(0);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("user_portfolio_summary")
         .select("total_amount")
         .eq("user_id", user.id)
-        .eq("cryptocurrency_id", fromCoin)
+        .eq("cryptocurrency_id", dbCoinId)
         .maybeSingle();
 
       if (error) {
@@ -86,7 +108,7 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
     };
 
     loadBalance();
-  }, [isOpen, fromCoin]);
+  }, [isOpen, fromCoin, fromCoinData, symbolToIdMap]);
 
   const handleSwap = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -124,6 +146,15 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
         return;
       }
 
+      // Map symbols to database cryptocurrency IDs
+      const fromDbId = symbolToIdMap.get(fromCoinData.symbol.toUpperCase());
+      const toDbId = symbolToIdMap.get(toCoinData.symbol.toUpperCase());
+      
+      if (!fromDbId || !toDbId) {
+        toast.error("Could not find cryptocurrency in database");
+        return;
+      }
+
       // Calculate swap values
       const fromValue = swapAmount * fromCoinData.current_price;
       const feeAmount = fromValue * (SWAP_FEE_PERCENTAGE / 100);
@@ -135,7 +166,7 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
         .from("user_purchases")
         .insert({
           user_id: user.id,
-          cryptocurrency_id: fromCoin,
+          cryptocurrency_id: fromDbId,
           amount: -swapAmount,
           purchase_price: fromCoinData.current_price,
           total_cost: -fromValue,
@@ -150,7 +181,7 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
         .from("user_purchases")
         .insert({
           user_id: user.id,
-          cryptocurrency_id: toCoin,
+          cryptocurrency_id: toDbId,
           amount: toAmount,
           purchase_price: toCoinData.current_price,
           total_cost: netValue,
