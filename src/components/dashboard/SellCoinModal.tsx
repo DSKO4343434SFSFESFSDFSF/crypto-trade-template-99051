@@ -24,6 +24,7 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
   const [amount, setAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [availableBalance, setAvailableBalance] = useState<number>(0);
+  const [dbCoinId, setDbCoinId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -32,11 +33,26 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Map the coin symbol to database cryptocurrency_id
+      const { data: dbCoins } = await supabase
+        .from('cryptocurrencies')
+        .select('id, symbol')
+        .eq('symbol', coin.symbol)
+        .maybeSingle();
+      
+      if (!dbCoins) {
+        console.error("Could not find database ID for symbol:", coin.symbol);
+        setAvailableBalance(0);
+        return;
+      }
+      
+      setDbCoinId(dbCoins.id);
+
       const { data, error } = await supabase
         .from("user_portfolio_summary")
         .select("total_amount")
         .eq("user_id", user.id)
-        .eq("cryptocurrency_id", coin.id)
+        .eq("cryptocurrency_id", dbCoins.id)
         .maybeSingle();
 
       if (error) {
@@ -49,7 +65,7 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
     };
 
     loadBalance();
-  }, [isOpen, coin.id]);
+  }, [isOpen, coin.symbol]);
 
   const handleSell = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -72,6 +88,11 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
         return;
       }
 
+      if (!dbCoinId) {
+        toast.error("Could not find cryptocurrency in database");
+        return;
+      }
+
       const totalReceived = sellAmount * coin.current_price;
 
       // Insert sell record as negative amount
@@ -79,7 +100,7 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
         .from("user_purchases")
         .insert({
           user_id: user.id,
-          cryptocurrency_id: coin.id,
+          cryptocurrency_id: dbCoinId,
           amount: -sellAmount, // Negative amount for sell
           purchase_price: coin.current_price,
           total_cost: -totalReceived, // Negative cost for sell
