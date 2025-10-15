@@ -30,18 +30,18 @@ export const WatchlistCard = ({ name, symbol, icon, price, change, isPositive, c
   }, [price]);
 
   return (
-    <div className="bg-[#1A1A1A] border border-white/10 rounded-lg p-3 hover:bg-white/5 transition-all duration-300 cursor-pointer group">
-      {/* Top section - Icon and Name (10% smaller) */}
-      <div className="flex items-center gap-2 mb-3">
-        <img src={icon} alt={name} className="w-[14.4px] h-[14.4px] rounded-full flex-shrink-0" />
+    <div className="bg-[#1A1A1A] border border-white/10 rounded-lg p-2 hover:bg-white/5 transition-all duration-300 cursor-pointer group">
+      {/* Top section - Icon and Name (20% bigger) */}
+      <div className="flex items-center gap-2 mb-2">
+        <img src={icon} alt={name} className="w-[17.3px] h-[17.3px] rounded-full flex-shrink-0" />
         <div className="flex flex-col min-w-0 flex-1 justify-center">
-          <h4 className="text-[10.8px] font-medium text-white truncate leading-tight">{name}</h4>
-          <p className="text-[9px] text-gray-400 uppercase leading-tight">{symbol}</p>
+          <h4 className="text-[13px] font-medium text-white truncate leading-tight">{name}</h4>
+          <p className="text-[11px] text-gray-400 uppercase leading-tight">{symbol}</p>
         </div>
       </div>
       
       {/* Chart section - minimal axis lines (1/4 length) */}
-      <div className="mb-3 relative">
+      <div className="mb-2 relative">
         <div className="h-12 w-full">
           <Sparklines 
             data={chartData} 
@@ -73,7 +73,7 @@ export const WatchlistCard = ({ name, symbol, icon, price, change, isPositive, c
       {/* Bottom section - Price and Change with animations */}
       <div className="flex items-center justify-between">
         <div className={
-          `text-sm font-semibold transition-all duration-500 ease-out ${
+          `text-[17px] font-semibold transition-all duration-500 ease-out ${
             isPositive ? 'text-green-500' : 'text-red-500'
           } ${
             isAnimating ? 'scale-110 opacity-70' : 'scale-100 opacity-100'
@@ -82,7 +82,7 @@ export const WatchlistCard = ({ name, symbol, icon, price, change, isPositive, c
           {displayPrice}
         </div>
         <div className={
-          `text-xs font-medium flex items-center gap-1 transition-all duration-300 ${
+          `text-sm font-medium flex items-center gap-1 transition-all duration-300 ${
             isPositive ? 'text-green-500' : 'text-red-500'
           }`
         }>
