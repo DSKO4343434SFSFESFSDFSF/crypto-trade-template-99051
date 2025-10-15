@@ -57,8 +57,9 @@ const Transactions = () => {
           .select(`
             id,
             amount,
-            usd_amount,
+            total_cost,
             created_at,
+            status,
             cryptocurrencies (
               symbol,
               name
@@ -76,9 +77,9 @@ const Transactions = () => {
           amount: purchase.amount,
           cryptocurrency_symbol: purchase.cryptocurrencies?.symbol,
           cryptocurrency_name: purchase.cryptocurrencies?.name,
-          usd_amount: purchase.usd_amount,
+          usd_amount: purchase.total_cost,
           created_at: purchase.created_at,
-          status: 'completed' as const
+          status: purchase.status || 'completed'
         }));
 
         // For now, we'll only show purchase transactions
