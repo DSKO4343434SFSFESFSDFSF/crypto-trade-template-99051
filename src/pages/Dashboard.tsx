@@ -13,6 +13,7 @@ import { fetchTopCoins, CoinData } from "@/services/coingecko";
 import { toast } from "sonner";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const [userName, setUserName] = useState<string>("");
   const [coins, setCoins] = useState<CoinData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"buy" | "sell" | "convert">("buy");
   const [portfolioValue, setPortfolioValue] = useState(0);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
@@ -71,8 +73,14 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+    const loadData = async (isRefresh = false) => {
+      // On refresh, show skeleton states; on initial load, show loading screen
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
       try {
         const coinsData = await fetchTopCoins();
         setCoins(coinsData);
@@ -106,12 +114,16 @@ const Dashboard = () => {
         toast.error("Failed to load market data");
         console.error(error);
       } finally {
-        setLoading(false);
+        if (isRefresh) {
+          setRefreshing(false);
+        } else {
+          setLoading(false);
+        }
       }
     };
 
-    loadData();
-    const interval = setInterval(loadData, 60000); // Refresh every minute
+    loadData(false); // Initial load
+    const interval = setInterval(() => loadData(true), 60000); // Refresh every minute
 
     return () => clearInterval(interval);
   }, [user, portfolioVersion]);
@@ -206,7 +218,11 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-gray-400 mb-2">Portfolio value</p>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-4xl font-bold text-white">${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+                {refreshing ? (
+                  <Skeleton className="h-12 w-64 bg-white/10" />
+                ) : (
+                  <h2 className="text-4xl font-bold text-white">${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+                )}
                 <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/5 text-white">
                   <span className="text-sm">↓</span>
                   <span className="ml-1">Deposit</span>
@@ -218,18 +234,38 @@ const Dashboard = () => {
             <div>
               <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Watchlist</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {coins.slice(0, 9).map((coin) => (
-                  <WatchlistCard
-                    key={coin.id}
-                    name={coin.name}
-                    symbol={coin.symbol.toUpperCase()}
-                    icon={coin.image}
-                    price={`$${coin.current_price.toLocaleString()}`}
-                    change={`${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%`}
-                    isPositive={coin.price_change_percentage_24h > 0}
-                    chartData={generateSparklineData(coin.price_change_percentage_24h)}
-                  />
-                ))}
+                {refreshing ? (
+                  // Show skeleton cards during refresh
+                  Array.from({ length: 9 }).map((_, index) => (
+                    <div key={index} className="bg-[#1A1A1A] border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Skeleton className="w-8 h-8 rounded-full bg-white/10" />
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-20 mb-1 bg-white/10" />
+                          <Skeleton className="h-3 w-12 bg-white/10" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-12 w-full mb-2 bg-white/10" />
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-16 bg-white/10" />
+                        <Skeleton className="h-4 w-12 bg-white/10" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  coins.slice(0, 9).map((coin) => (
+                    <WatchlistCard
+                      key={coin.id}
+                      name={coin.name}
+                      symbol={coin.symbol.toUpperCase()}
+                      icon={coin.image}
+                      price={`$${coin.current_price.toLocaleString()}`}
+                      change={`${Math.abs(coin.price_change_percentage_24h).toFixed(2)}%`}
+                      isPositive={coin.price_change_percentage_24h > 0}
+                      chartData={generateSparklineData(coin.price_change_percentage_24h)}
+                    />
+                  ))
+                )}
               </div>
             </div>
 
@@ -276,56 +312,84 @@ const Dashboard = () => {
               {/* Coin Selector */}
               <div className="mb-6">
                 <p className="text-xs text-gray-400 mb-2">Select cryptocurrency</p>
-                <Select 
-                  value={selectedCoin?.id || ""} 
-                  onValueChange={(value) => {
-                    const coin = coins.find(c => c.id === value);
-                    setSelectedCoin(coin || null);
-                  }}
-                >
-                  <SelectTrigger className="bg-[#0A0A0A] border-white/10 hover:border-green-500/50 text-white">
-                    <SelectValue placeholder="Choose a coin" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1A1A1A] border-white/10">
-                    {coins.slice(0, 20).map((coin) => (
-                      <SelectItem key={coin.id} value={coin.id} className="text-white hover:bg-white/5">
-                        <div className="flex items-center gap-2">
-                          <img src={coin.image} alt={coin.name} className="w-5 h-5" />
-                          <span>{coin.name}</span>
-                          <span className="text-gray-400 text-xs">({coin.symbol.toUpperCase()})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {refreshing ? (
+                  <Skeleton className="h-10 w-full bg-white/10" />
+                ) : (
+                  <Select 
+                    value={selectedCoin?.id || ""} 
+                    onValueChange={(value) => {
+                      const coin = coins.find(c => c.id === value);
+                      setSelectedCoin(coin || null);
+                    }}
+                  >
+                    <SelectTrigger className="bg-[#0A0A0A] border-white/10 hover:border-green-500/50 text-white">
+                      <SelectValue placeholder="Choose a coin" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1A1A1A] border-white/10">
+                      {coins.slice(0, 20).map((coin) => (
+                        <SelectItem key={coin.id} value={coin.id} className="text-white hover:bg-white/5">
+                          <div className="flex items-center gap-2">
+                            <img src={coin.image} alt={coin.name} className="w-5 h-5" />
+                            <span>{coin.name}</span>
+                            <span className="text-gray-400 text-xs">({coin.symbol.toUpperCase()})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {selectedCoin && (
                 <>
                   {/* Selected Coin Info */}
                   <div className="mb-6 p-4 bg-[#0A0A0A] border border-white/10 rounded-lg">
-                    <div className="flex items-center gap-3 mb-3">
-                      <img src={selectedCoin.image} alt={selectedCoin.name} className="w-10 h-10" />
-                      <div>
-                        <p className="text-sm font-medium text-white">{selectedCoin.name}</p>
-                        <p className="text-xs text-gray-400">{selectedCoin.symbol.toUpperCase()}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Current Price</span>
-                      <span className="text-sm font-semibold text-white">
-                        ${selectedCoin.current_price.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-gray-400">24h Change</span>
-                      <span className={`text-sm font-semibold ${
-                        selectedCoin.price_change_percentage_24h > 0 ? "text-green-500" : "text-red-500"
-                      }`}>
-                        {selectedCoin.price_change_percentage_24h > 0 ? "+" : ""}
-                        {selectedCoin.price_change_percentage_24h.toFixed(2)}%
-                      </span>
-                    </div>
+                    {refreshing ? (
+                      <>
+                        <div className="flex items-center gap-3 mb-3">
+                          <Skeleton className="w-10 h-10 rounded-full bg-white/10" />
+                          <div className="flex-1">
+                            <Skeleton className="h-4 w-24 mb-1 bg-white/10" />
+                            <Skeleton className="h-3 w-16 bg-white/10" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Skeleton className="h-3 w-20 bg-white/10" />
+                            <Skeleton className="h-4 w-24 bg-white/10" />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Skeleton className="h-3 w-20 bg-white/10" />
+                            <Skeleton className="h-4 w-16 bg-white/10" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 mb-3">
+                          <img src={selectedCoin.image} alt={selectedCoin.name} className="w-10 h-10" />
+                          <div>
+                            <p className="text-sm font-medium text-white">{selectedCoin.name}</p>
+                            <p className="text-xs text-gray-400">{selectedCoin.symbol.toUpperCase()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400">Current Price</span>
+                          <span className="text-sm font-semibold text-white">
+                            ${selectedCoin.current_price.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-gray-400">24h Change</span>
+                          <span className={`text-sm font-semibold ${
+                            selectedCoin.price_change_percentage_24h > 0 ? "text-green-500" : "text-red-500"
+                          }`}>
+                            {selectedCoin.price_change_percentage_24h > 0 ? "+" : ""}
+                            {selectedCoin.price_change_percentage_24h.toFixed(2)}%
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Action Button */}
