@@ -1,4 +1,4 @@
-import { Home, TrendingUp, Wallet, Settings, BarChart3, ChevronRight } from "lucide-react";
+import { Home, TrendingUp, Wallet, Settings, BarChart3, ChevronRight, Receipt } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface SidebarProps {
@@ -13,6 +13,7 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
     { icon: Home, label: "Dashboard", path: "/dashboard" },
     { icon: TrendingUp, label: "Cryptocurrencies", path: "/cryptocurrencies" },
     { icon: Wallet, label: "Portfolio", path: "/dashboard" },
+    { icon: Receipt, label: "Transactions", path: "/transactions" },
     { icon: BarChart3, label: "Analytics", path: "/dashboard" },
     { icon: Settings, label: "Settings", path: "/dashboard" },
   ];
