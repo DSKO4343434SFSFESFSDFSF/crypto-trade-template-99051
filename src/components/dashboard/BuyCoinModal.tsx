@@ -33,7 +33,7 @@ export const BuyCoinModal = ({ coin, isOpen, onClose, onSuccess }: BuyCoinModalP
       const { data: dbCoins } = await supabase
         .from('cryptocurrencies')
         .select('id')
-        .eq('symbol', coin.symbol)
+        .eq('symbol', coin.symbol.toLowerCase())
         .maybeSingle();
       
       if (dbCoins) {
