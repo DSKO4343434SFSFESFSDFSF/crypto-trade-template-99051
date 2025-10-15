@@ -15,7 +15,7 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
     { icon: Wallet, label: "Portfolio", path: "/dashboard" },
     { icon: Receipt, label: "Transactions", path: "/transactions" },
     { icon: BarChart3, label: "Analytics", path: "/dashboard" },
-    { icon: Settings, label: "Settings", path: "/dashboard" },
+    { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
   return (
