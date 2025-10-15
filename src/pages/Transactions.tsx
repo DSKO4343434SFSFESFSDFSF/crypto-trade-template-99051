@@ -13,6 +13,7 @@ interface Transaction {
   amount: number;
   cryptocurrency_symbol?: string;
   cryptocurrency_name?: string;
+  cryptocurrency_image_url?: string;
   usd_amount: number;
   created_at: string;
   status: 'completed' | 'pending' | 'failed';
@@ -64,7 +65,8 @@ const Transactions = () => {
             notes,
             cryptocurrencies (
               symbol,
-              name
+              name,
+              image_url
             )
           `)
           .eq('user_id', user.id)
@@ -79,6 +81,7 @@ const Transactions = () => {
           amount: purchase.amount,
           cryptocurrency_symbol: purchase.cryptocurrencies?.symbol,
           cryptocurrency_name: purchase.cryptocurrencies?.name,
+          cryptocurrency_image_url: purchase.cryptocurrencies?.image_url,
           usd_amount: purchase.total_cost,
           created_at: purchase.created_at,
           status: purchase.status || 'completed',
@@ -237,7 +240,15 @@ const Transactions = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center">
-                          {getTransactionIcon(transaction.type)}
+                          {transaction.cryptocurrency_image_url ? (
+                            <img 
+                              src={transaction.cryptocurrency_image_url} 
+                              alt={transaction.cryptocurrency_name || 'Cryptocurrency'} 
+                              className="w-8 h-8 rounded-full"
+                            />
+                          ) : (
+                            getTransactionIcon(transaction.type)
+                          )}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
