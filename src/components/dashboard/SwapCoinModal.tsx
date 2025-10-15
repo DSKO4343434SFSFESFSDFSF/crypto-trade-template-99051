@@ -69,12 +69,18 @@ export const SwapCoinModal = ({ initialCoin, isOpen, onClose, onSuccess }: SwapC
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_portfolio_summary")
         .select("total_amount")
         .eq("user_id", user.id)
         .eq("cryptocurrency_id", fromCoin)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error loading balance:", error);
+        setFromBalance(0);
+        return;
+      }
 
       setFromBalance(data?.total_amount || 0);
     };
