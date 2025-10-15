@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownLeft, Calendar, Filter } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Calendar, Filter, FileText } from "lucide-react";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import { toast } from "sonner";
@@ -16,11 +16,12 @@ interface Transaction {
   usd_amount: number;
   created_at: string;
   status: 'completed' | 'pending' | 'failed';
+  notes?: string;
 }
 
 const Transactions = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'deposits' | 'trades'>('all');
@@ -60,6 +61,7 @@ const Transactions = () => {
             total_cost,
             created_at,
             status,
+            notes,
             cryptocurrencies (
               symbol,
               name
@@ -79,7 +81,8 @@ const Transactions = () => {
           cryptocurrency_name: purchase.cryptocurrencies?.name,
           usd_amount: purchase.total_cost,
           created_at: purchase.created_at,
-          status: purchase.status || 'completed'
+          status: purchase.status || 'completed',
+          notes: purchase.notes
         }));
 
         // For now, we'll only show purchase transactions
@@ -244,6 +247,15 @@ const Transactions = () => {
                               <span className="text-gray-400 text-sm">
                                 {transaction.cryptocurrency_name} ({transaction.cryptocurrency_symbol.toUpperCase()})
                               </span>
+                            )}
+                            {transaction.notes && (
+                              <div className="relative group">
+                                <FileText className="w-4 h-4 text-blue-400 cursor-help" />
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10 border border-gray-600">
+                                  {transaction.notes}
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                                </div>
+                              </div>
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
