@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownLeft, Calendar, Filter, FileText } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Calendar, Filter, FileText, Coins } from "lucide-react";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import { toast } from "sonner";
@@ -103,6 +103,7 @@ const Transactions = () => {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'buy':
+        return <Coins className="w-4 h-4 text-green-500" />;
       case 'deposit':
         return <ArrowDownLeft className="w-4 h-4 text-green-500" />;
       case 'sell':
@@ -240,7 +241,9 @@ const Transactions = () => {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">
+                            <span className={`font-medium ${
+                              transaction.type === 'buy' ? 'text-green-500' : 'text-white'
+                            }`}>
                               {formatTransactionType(transaction.type)}
                             </span>
                             {transaction.cryptocurrency_symbol && (
