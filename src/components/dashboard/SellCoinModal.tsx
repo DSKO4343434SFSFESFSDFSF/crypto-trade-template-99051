@@ -43,27 +43,17 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
           return;
         }
 
-        // Map the coin symbol to database cryptocurrency_id
-        const { data: dbCoins } = await supabase
-          .from('cryptocurrencies')
-          .select('id, symbol')
-          .eq('symbol', coin.symbol.toLowerCase())
-          .maybeSingle();
-        
-        if (!dbCoins) {
-          console.error("Could not find database ID for symbol:", coin.symbol);
-          setAvailableBalance(0);
-          return;
-        }
-        
-        setDbCoinId(dbCoins.id);
-
+        // Query directly by symbol from user_portfolio_summary - this matches the approach in YourHoldings and SwapCoinModal
         const { data, error } = await supabase
           .from("user_portfolio_summary")
-          .select("total_amount")
+          .select("total_amount, cryptocurrency_id")
           .eq("user_id", user.id)
-          .eq("cryptocurrency_id", dbCoins.id)
+          .eq("symbol", coin.symbol.toLowerCase())
           .maybeSingle();
+        
+        if (data?.cryptocurrency_id) {
+          setDbCoinId(data.cryptocurrency_id);
+        }
 
         if (error) {
           console.error("Error loading balance:", error);
