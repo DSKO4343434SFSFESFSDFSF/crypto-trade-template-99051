@@ -68,7 +68,7 @@ export const SellCoinModal = ({ coin, isOpen, onClose, onSuccess }: SellCoinModa
     };
 
     loadBalance();
-  }, [isOpen, coin.symbol]);
+  }, [isOpen, coin.id]);
 
   const handleSell = async () => {
     if (!amount || parseFloat(amount) <= 0) {
